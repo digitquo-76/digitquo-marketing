@@ -1,4 +1,4 @@
-import '@/styles/app.css';
+import '../../styles/app.css';
 
 export const metadata = {
   title: 'DigitQuo - Panel',

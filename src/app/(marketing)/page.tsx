@@ -1,8 +1,8 @@
-import { Navbar } from '@/components/marketing/Navbar';
-import { HeroStat, RevealProvider } from '@/components/marketing/HeroStat';
-import { FeaturesSection, HowItWorksSection, RolesSection, TestimonialsSection, CtaSection } from '@/components/marketing/Sections';
-import { Footer } from '@/components/marketing/Footer';
-import { ArrowRightIcon, PlayIcon } from '@/components/ui/icons';
+import { Navbar } from '../../components/marketing/Navbar';
+import { HeroStat, RevealProvider } from '../../components/marketing/HeroStat';
+import { FeaturesSection, HowItWorksSection, RolesSection, TestimonialsSection, CtaSection } from '../../components/marketing/Sections';
+import { Footer } from '../../components/marketing/Footer';
+import { ArrowRightIcon, PlayIcon } from '../../components/ui/icons';
 
 export default function LandingPage() {
   return (

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Product } from '@/types';
-import { safeImageUrl, formatCurrency } from '@/lib/utils';
+import { Product } from '../../types';
+import { safeImageUrl, formatCurrency } from '../../lib/utils';
 
 export function ProductModal({ open, product, onClose, onSave, showToast }: any) {
   const initial = useMemo(() => product || { name: '', category: '', price: '', stock: '', image: '', description: '' }, [product]);

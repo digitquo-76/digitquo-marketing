@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useDigitQuoStore, CURRENT_SHOPKEEPER, createProduct } from '@/lib/store';
-import { DashboardShell } from '@/components/panel/DashboardShell';
-import { Metric, ActivityList, ProductCell, StockBadge, EmptyRow } from '@/components/panel/Shared';
-import { ProductModal } from '@/components/panel/Modals';
-import { ToastRegion } from '@/components/ui/ToastRegion';
-import { formatCurrency } from '@/lib/utils';
-import { GridIcon, PackageIcon, ActivityIcon, SearchIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
+import { useDigitQuoStore, CURRENT_SHOPKEEPER, createProduct } from '../../../lib/store';
+import { DashboardShell } from '../../../components/panel/DashboardShell';
+import { Metric, ActivityList, ProductCell, StockBadge, EmptyRow } from '../../../components/panel/Shared';
+import { ProductModal } from '../../../components/panel/Modals';
+import { ToastRegion } from '../../../components/ui/ToastRegion';
+import { formatCurrency } from '../../../lib/utils';
+import { GridIcon, PackageIcon, ActivityIcon, SearchIcon, EditIcon, TrashIcon } from '../../../components/ui/icons';
 
 export default function ShopkeeperPage() {
   const store = useDigitQuoStore();

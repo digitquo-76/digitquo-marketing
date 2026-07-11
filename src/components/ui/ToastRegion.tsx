@@ -1,6 +1,6 @@
 'use client';
 
-import { Toast } from '@/types';
+import { Toast } from '../../types';
 
 export function ToastRegion({ toasts }: { toasts: Toast[] }) {
   return (

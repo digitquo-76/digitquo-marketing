@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber } from '../../lib/utils';
 
 export function HeroStat({ target, suffix, label }: { target: number, suffix: string, label: string }) {
   const value = useCountUp(target);

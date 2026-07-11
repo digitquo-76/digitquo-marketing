@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useDigitQuoStore, CURRENT_BROKER, createSale } from '@/lib/store';
-import { DashboardShell } from '@/components/panel/DashboardShell';
-import { Metric, EmptyRow, ProductImage } from '@/components/panel/Shared';
-import { SaleModal } from '@/components/panel/Modals';
-import { ToastRegion } from '@/components/ui/ToastRegion';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { GridIcon, SearchIcon, SaleIcon, HomeIcon } from '@/components/ui/icons';
+import { useDigitQuoStore, CURRENT_BROKER, createSale } from '../../../lib/store';
+import { DashboardShell } from '../../../components/panel/DashboardShell';
+import { Metric, EmptyRow, ProductImage } from '../../../components/panel/Shared';
+import { SaleModal } from '../../../components/panel/Modals';
+import { ToastRegion } from '../../../components/ui/ToastRegion';
+import { formatCurrency, formatDate } from '../../../lib/utils';
+import { GridIcon, SearchIcon, SaleIcon, HomeIcon } from '../../../components/ui/icons';
 
 export default function BrokerPage() {
   const store = useDigitQuoStore();

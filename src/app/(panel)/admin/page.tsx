@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useDigitQuoStore } from '@/lib/store';
-import { DashboardShell } from '@/components/panel/DashboardShell';
-import { Metric, ActivityList, ProductCell, StockBadge, EmptyRow } from '@/components/panel/Shared';
-import { ToastRegion } from '@/components/ui/ToastRegion';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { GridIcon, ActivityIcon, PackageIcon, SaleIcon, BackIcon, ShieldIcon } from '@/components/ui/icons';
+import { useDigitQuoStore } from '../../../lib/store';
+import { DashboardShell } from '../../../components/panel/DashboardShell';
+import { Metric, ActivityList, ProductCell, StockBadge, EmptyRow } from '../../../components/panel/Shared';
+import { ToastRegion } from '../../../components/ui/ToastRegion';
+import { formatCurrency, formatDate } from '../../../lib/utils';
+import { GridIcon, ActivityIcon, PackageIcon, SaleIcon, BackIcon, ShieldIcon } from '../../../components/ui/icons';
 
 export default function AdminPage() {
   const store = useDigitQuoStore();

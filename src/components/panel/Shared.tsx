@@ -1,7 +1,7 @@
 'use client';
 
-import { Product, Activity } from '@/types';
-import { safeImageUrl, relativeTime } from '@/lib/utils';
+import { Product, Activity } from '../../types';
+import { safeImageUrl, relativeTime } from '../../lib/utils';
 import { SaleIcon, PackageIcon, ActivityIcon } from '../ui/icons';
 
 export function Metric({ icon, value, label }: { icon: React.ReactNode, value: number | string, label: string }) {
