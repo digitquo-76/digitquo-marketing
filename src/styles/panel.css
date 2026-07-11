@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --panel-bg: #f7f5fb;
   --panel-surface: #ffffff;
   --panel-surface-soft: #f4efff;
@@ -26,7 +26,7 @@ html {
   scroll-behavior: smooth;
 }
 
-body {
+html[data-route="panel"] body {
   min-height: 100vh;
   color: var(--panel-text);
   background:
