@@ -1,3 +1,6 @@
+'use client';
+
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const DQ_KEYS = {
@@ -9,36 +12,12 @@ const DQ_KEYS = {
 const CURRENT_SHOPKEEPER = 'My Store';
 const CURRENT_BROKER = 'Partner Broker';
 
-function App() {
-  const [path, setPath] = useState(window.location.pathname);
-  const route = getRoute(path);
-  const isPanel = route !== 'landing';
-
+function App({ route = 'landing' }) {
   useEffect(() => {
-    const onPopState = () => setPath(window.location.pathname);
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.dataset.route = isPanel ? 'panel' : 'landing';
-    document.body.dataset.panel = isPanel ? route : '';
     document.body.classList.remove('sidebar-open');
     document.body.style.overflow = '';
     document.documentElement.scrollTop = 0;
-
-    let robotsMeta = document.querySelector('meta[name="robots"]');
-    if (route === 'admin') {
-      if (!robotsMeta) {
-        robotsMeta = document.createElement('meta');
-        robotsMeta.name = 'robots';
-        document.head.appendChild(robotsMeta);
-      }
-      robotsMeta.content = 'noindex, nofollow';
-    } else if (robotsMeta) {
-      robotsMeta.remove();
-    }
-  }, [isPanel, route]);
+  }, [route]);
 
   if (route === 'shopkeeper') return <ShopkeeperPanel />;
   if (route === 'broker') return <BrokerPanel />;
@@ -48,47 +27,14 @@ function App() {
 
 export default App;
 
-function getRoute(pathname) {
-  const page = pathname.replace(/^\/+|\/+$/g, '') || '';
-  if (page === 'shopkeeper') return 'shopkeeper';
-  if (page === 'broker') return 'broker';
-  if (page === 'admin') return 'admin';
-  return 'landing';
-}
-
-function AppLink({ href, children, onClick, ...props }) {
-  const handleClick = (event) => {
-    onClick?.(event);
-    if (
-      event.defaultPrevented ||
-      event.button !== 0 ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey ||
-      !href?.startsWith('/')
-    ) {
-      return;
-    }
-
-    event.preventDefault();
-    if (window.location.pathname !== href) {
-      window.history.pushState({}, '', href);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    }
-  };
-
-  return <a href={href} onClick={handleClick} {...props}>{children}</a>;
+function AppLink({ href, children, ...props }) {
+  return <Link href={href} {...props}>{children}</Link>;
 }
 
 function LandingPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('');
-
-  useEffect(() => {
-    document.title = 'DigitQuo - The Smarter Way to Market & Sell';
-  }, []);
 
   useEffect(() => {
     const updateScrolled = () => setScrolled(window.scrollY > 40);
@@ -498,10 +444,6 @@ function ShopkeeperPanel() {
   const visibleProducts = myProducts.filter((product) => `${product.name} ${product.category}`.toLowerCase().includes(search.trim().toLowerCase()));
   const activity = store.activity.filter((item) => item.message.includes(CURRENT_SHOPKEEPER) || item.type === 'sale').slice(0, 6);
 
-  useEffect(() => {
-    document.title = 'Seller Panel - DigitQuo';
-  }, []);
-
   const openAddProduct = () => {
     setEditing(null);
     setModalOpen(true);
@@ -626,10 +568,6 @@ function BrokerPanel() {
     return matchesSearch && matchesCategory;
   });
 
-  useEffect(() => {
-    document.title = 'Broker Panel - DigitQuo';
-  }, []);
-
   const recordSale = ({ productId, customer, quantity }) => {
     const index = store.products.findIndex((product) => product.id === productId);
     const product = store.products[index];
@@ -735,10 +673,6 @@ function AdminPanel() {
   const sellers = new Set(store.products.map((product) => product.seller));
   const brokers = new Set(store.sales.map((sale) => sale.broker));
 
-  useEffect(() => {
-    document.title = 'Owner Admin Panel - DigitQuo';
-  }, []);
-
   const resetData = () => {
     if (!window.confirm('Reset products, sales, and activity to the original demo data?')) return;
     store.resetDemoData();
@@ -831,7 +765,11 @@ function AdminPanel() {
 
 function DashboardShell({ label, nav, user, title, actions, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const dateLabel = new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+  const [dateLabel, setDateLabel] = useState('');
+
+  useEffect(() => {
+    setDateLabel(new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()));
+  }, []);
 
   useEffect(() => {
     document.body.classList.toggle('sidebar-open', sidebarOpen);
@@ -880,13 +818,17 @@ function DashboardShell({ label, nav, user, title, actions, children }) {
 }
 
 function useDigitQuoStore() {
-  const [products, setProductsState] = useState(() => {
-    seedDemoData();
-    return readStore(DQ_KEYS.products);
-  });
-  const [sales, setSalesState] = useState(() => readStore(DQ_KEYS.sales));
-  const [activity, setActivityState] = useState(() => readStore(DQ_KEYS.activity));
+  const [products, setProductsState] = useState([]);
+  const [sales, setSalesState] = useState([]);
+  const [activity, setActivityState] = useState([]);
   const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    seedDemoData();
+    setProductsState(readStore(DQ_KEYS.products));
+    setSalesState(readStore(DQ_KEYS.sales));
+    setActivityState(readStore(DQ_KEYS.activity));
+  }, []);
 
   const showToast = (message, type = '') => {
     const toast = { id: `toast_${Date.now()}_${Math.random()}`, message, type };
