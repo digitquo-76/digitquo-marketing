@@ -27,6 +27,12 @@ export function DashboardShell({ label, nav, user, title, actions, children }: D
     return () => document.body.classList.remove('sidebar-open');
   }, [sidebarOpen]);
 
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setSidebarOpen(false);
@@ -34,6 +40,10 @@ export function DashboardShell({ label, nav, user, title, actions, children }: D
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  if (!mounted) {
+    return null; // Prevent hydration mismatch on client-rendered Dashboard
+  }
 
   return (
     <div className="dashboard-shell">
