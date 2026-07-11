@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="DigitQuo broker panel for discovering products and recording customer sales.">
+  <title>Broker Panel — DigitQuo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body data-panel="broker">
+  <div class="dashboard-shell">
+    <aside class="sidebar" aria-label="Broker navigation">
+      <a class="panel-brand" href="index.html">
+        <span class="panel-brand-mark"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/></svg></span>
+        DigitQuo
+      </a>
+      <p class="panel-label">Broker panel</p>
+      <nav class="sidebar-nav">
+        <a class="sidebar-link active" href="#overview"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Overview</a>
+        <a class="sidebar-link" href="#catalog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Product catalog</a>
+        <a class="sidebar-link" href="#sales"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7H14a3.5 3.5 0 010 7H6"/></svg>My sales</a>
+        <a class="sidebar-link" href="shopkeeper.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>View seller panel</a>
+      </nav>
+      <div class="sidebar-footer"><div class="user-chip"><span class="user-avatar">PB</span><div><p class="user-name">Partner Broker</p><p class="user-role">Broker account</p></div></div></div>
+    </aside>
+    <div class="sidebar-scrim"></div>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div class="topbar-actions">
+          <button class="mobile-menu-button" type="button" data-mobile-menu aria-label="Open navigation"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+          <div><p class="topbar-title">Broker workspace</p><p class="topbar-meta" data-current-date></p></div>
+        </div>
+        <a class="btn-panel btn-panel-secondary" href="index.html">View website</a>
+      </header>
+
+      <div class="dashboard-content">
+        <section class="page-heading" id="overview">
+          <div><p class="eyebrow">Broker overview</p><h1 class="page-title">Find products. Make the sale.</h1><p class="page-description">Browse live inventory from every seller, choose the right products for your customers, and record each completed sale.</p></div>
+          <a class="btn-panel btn-panel-primary" href="#catalog">Browse all products</a>
+        </section>
+
+        <section class="metrics-grid" aria-label="Broker metrics">
+          <article class="metric-card"><span class="metric-icon">▦</span><strong class="metric-value" id="metric-available">0</strong><span class="metric-label">Products available</span></article>
+          <article class="metric-card"><span class="metric-icon">⌂</span><strong class="metric-value" id="metric-sellers">0</strong><span class="metric-label">Active sellers</span></article>
+          <article class="metric-card"><span class="metric-icon">◈</span><strong class="metric-value" id="metric-categories">0</strong><span class="metric-label">Product categories</span></article>
+          <article class="metric-card"><span class="metric-icon">₹</span><strong class="metric-value" id="metric-broker-sales">₹0</strong><span class="metric-label">My recorded sales</span></article>
+        </section>
+
+        <section class="panel-card" id="catalog">
+          <header class="panel-card-header">
+            <div><h2 class="panel-card-title">Seller product catalog</h2><p class="panel-card-subtitle">Live products available for customer sales</p></div>
+            <div class="toolbar">
+              <label class="search-wrap"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="search-input" id="catalog-search" type="search" placeholder="Search catalog" aria-label="Search product catalog"></label>
+              <select class="filter-select" id="catalog-category" aria-label="Filter products by category"><option value="all">All categories</option></select>
+            </div>
+          </header>
+          <div class="panel-card-body"><div class="catalog-grid" id="catalog-grid"></div></div>
+        </section>
+
+        <section class="panel-card" id="sales">
+          <header class="panel-card-header"><div><h2 class="panel-card-title">My recent customer sales</h2><p class="panel-card-subtitle">Transactions recorded from this broker account</p></div></header>
+          <div class="table-wrap">
+            <table class="data-table"><thead><tr><th>Product</th><th>Customer</th><th>Quantity</th><th>Total</th><th>Date</th></tr></thead><tbody id="broker-sales-body"></tbody></table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="sale-modal" aria-hidden="true">
+    <form class="modal" id="sale-form">
+      <header class="modal-header"><h2 class="modal-title">Record a customer sale</h2><button class="modal-close" type="button" data-modal-close aria-label="Close">×</button></header>
+      <div class="modal-body">
+        <input type="hidden" name="productId">
+        <div class="form-grid">
+          <label class="form-group full"><span class="form-label">Product</span><input class="form-control" name="product" readonly></label>
+          <label class="form-group"><span class="form-label">Seller</span><input class="form-control" name="seller" readonly></label>
+          <label class="form-group"><span class="form-label">Quantity sold *</span><input class="form-control" name="quantity" type="number" required min="1" step="1"><span class="form-help" id="sale-stock-help"></span></label>
+          <label class="form-group full"><span class="form-label">Customer or business name *</span><input class="form-control" name="customer" required maxlength="80" placeholder="Who did you sell this to?"></label>
+        </div>
+      </div>
+      <footer class="modal-footer"><button class="btn-panel btn-panel-secondary" type="button" data-modal-close>Cancel</button><button class="btn-panel btn-panel-primary" type="submit">Confirm sale</button></footer>
+    </form>
+  </div>
+  <div class="toast-region" aria-live="polite"></div>
+  <script src="panel.js"></script>
+</body>
+</html>

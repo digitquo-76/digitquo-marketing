@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="DigitQuo seller panel for managing products, inventory, and sales.">
+  <title>Seller Panel — DigitQuo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body data-panel="shopkeeper">
+  <div class="dashboard-shell">
+    <aside class="sidebar" aria-label="Seller navigation">
+      <a class="panel-brand" href="index.html">
+        <span class="panel-brand-mark">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/></svg>
+        </span>
+        DigitQuo
+      </a>
+      <p class="panel-label">Seller panel</p>
+      <nav class="sidebar-nav">
+        <a class="sidebar-link active" href="#overview">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Overview
+        </a>
+        <a class="sidebar-link" href="#products">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/></svg>
+          My products
+        </a>
+        <a class="sidebar-link" href="#activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Activity
+        </a>
+        <a class="sidebar-link" href="broker.html">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          View broker panel
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <span class="user-avatar">MS</span>
+          <div><p class="user-name">My Store</p><p class="user-role">Seller account</p></div>
+        </div>
+      </div>
+    </aside>
+    <div class="sidebar-scrim"></div>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div class="topbar-actions">
+          <button class="mobile-menu-button" type="button" data-mobile-menu aria-label="Open navigation">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div><p class="topbar-title">Seller workspace</p><p class="topbar-meta" data-current-date></p></div>
+        </div>
+        <div class="topbar-actions">
+          <a class="btn-panel btn-panel-secondary" href="index.html">View website</a>
+          <button class="btn-panel btn-panel-primary" type="button" id="add-product-button">+ Add product</button>
+        </div>
+      </header>
+
+      <div class="dashboard-content">
+        <section class="page-heading" id="overview">
+          <div>
+            <p class="eyebrow">Store overview</p>
+            <h1 class="page-title">Manage what you sell.</h1>
+            <p class="page-description">Publish products for brokers to discover, keep stock accurate, and follow every sale from one workspace.</p>
+          </div>
+          <button class="btn-panel btn-panel-primary" type="button" data-modal-open="product-modal">+ Add new product</button>
+        </section>
+
+        <section class="metrics-grid" aria-label="Store metrics">
+          <article class="metric-card"><span class="metric-icon">▦</span><strong class="metric-value" id="metric-products">0</strong><span class="metric-label">Published products</span></article>
+          <article class="metric-card"><span class="metric-icon">◫</span><strong class="metric-value" id="metric-stock">0</strong><span class="metric-label">Units in inventory</span></article>
+          <article class="metric-card"><span class="metric-icon">!</span><strong class="metric-value" id="metric-low-stock">0</strong><span class="metric-label">Low-stock products</span></article>
+          <article class="metric-card"><span class="metric-icon">₹</span><strong class="metric-value" id="metric-shop-sales">₹0</strong><span class="metric-label">Sales value generated</span></article>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="panel-card" id="products">
+            <header class="panel-card-header">
+              <div><h2 class="panel-card-title">My product listings</h2><p class="panel-card-subtitle">Products visible to the broker network</p></div>
+              <div class="toolbar">
+                <label class="search-wrap">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input class="search-input" id="seller-search" type="search" placeholder="Search products" aria-label="Search my products">
+                </label>
+              </div>
+            </header>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="seller-products-body"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <aside class="panel-card" id="activity">
+            <header class="panel-card-header"><div><h2 class="panel-card-title">Recent activity</h2><p class="panel-card-subtitle">Updates affecting your store</p></div></header>
+            <div class="panel-card-body"><div class="activity-list" id="shop-activity"></div></div>
+          </aside>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="product-modal" aria-hidden="true">
+    <form class="modal" id="product-form">
+      <header class="modal-header"><h2 class="modal-title" id="product-modal-title">Add a new product</h2><button class="modal-close" type="button" data-modal-close aria-label="Close">×</button></header>
+      <div class="modal-body">
+        <input type="hidden" name="id">
+        <div class="form-grid">
+          <label class="form-group full"><span class="form-label">Product name *</span><input class="form-control" name="name" required maxlength="80" placeholder="e.g. Premium cotton shirt"></label>
+          <label class="form-group"><span class="form-label">Category *</span><select class="form-control" name="category" required><option value="">Choose category</option><option>Apparel</option><option>Accessories</option><option>Electronics</option><option>Food</option><option>Home &amp; Living</option><option>Other</option></select></label>
+          <label class="form-group"><span class="form-label">Price per unit (₹) *</span><input class="form-control" name="price" type="number" required min="1" step="1" placeholder="999"></label>
+          <label class="form-group"><span class="form-label">Available stock *</span><input class="form-control" name="stock" type="number" required min="0" step="1" placeholder="25"></label>
+          <label class="form-group"><span class="form-label">Image URL</span><input class="form-control" name="image" type="url" placeholder="https://..."><span class="form-help">Use a direct HTTPS image link.</span></label>
+          <label class="form-group full"><span class="form-label">Description</span><textarea class="form-control" name="description" maxlength="300" placeholder="Add useful product details for brokers"></textarea></label>
+        </div>
+      </div>
+      <footer class="modal-footer"><button class="btn-panel btn-panel-secondary" type="button" data-modal-close>Cancel</button><button class="btn-panel btn-panel-primary" type="submit" id="product-submit-label">Publish product</button></footer>
+    </form>
+  </div>
+  <div class="toast-region" aria-live="polite"></div>
+  <script src="panel.js"></script>
+</body>
+</html>

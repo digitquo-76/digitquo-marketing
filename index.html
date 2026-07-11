@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DigitQuo — The Smarter Way to Market &amp; Sell</title>
+  <meta name="description" content="DigitQuo connects sellers and brokers on one seamless platform. List products, find buyers, and grow your business — effortlessly." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== BACKGROUND EFFECTS ===== -->
+  <div class="bg-effects" aria-hidden="true">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="bg-grid"></div>
+  </div>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav id="navbar" class="navbar">
+    <div class="container nav-container">
+      <a href="#" class="logo" id="logo">
+        <span class="logo-mark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/></svg>
+        </span>
+        <span class="logo-text">DigitQuo</span>
+      </a>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#roles">Who It's For</a></li>
+        <li><a href="#testimonials">Testimonials</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+      <div class="nav-actions" id="nav-actions">
+        <a href="shopkeeper.html" class="btn btn-ghost" id="btn-login">Open panel</a>
+        <a href="#roles" class="btn btn-primary" id="btn-get-started">
+          Get Started
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ===== HERO ===== -->
+  <header id="hero" class="hero">
+    <div class="container hero-inner">
+      <div class="hero-badge reveal">
+        <span class="badge-dot"></span>
+        <span>Now open for early access</span>
+      </div>
+      <h1 class="hero-title reveal reveal-delay-1">
+        The marketplace<br />built for <span class="text-gradient">modern trade</span>
+      </h1>
+      <p class="hero-subtitle reveal reveal-delay-2">
+        DigitQuo connects sellers and brokers on one seamless platform.<br class="hide-mobile" />
+        List products, discover deals, and scale your business — effortlessly.
+      </p>
+      <div class="hero-cta reveal reveal-delay-3">
+        <a href="#roles" class="btn btn-primary btn-lg" id="hero-cta-start">
+          Start for free
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+        <a href="#how-it-works" class="btn btn-glass btn-lg" id="hero-cta-learn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          See how it works
+        </a>
+      </div>
+      <!-- Floating stats -->
+      <div class="hero-stats reveal reveal-delay-4">
+        <div class="hero-stat-card">
+          <span class="hero-stat-number" data-target="2500">0</span><span class="hero-stat-suffix">+</span>
+          <span class="hero-stat-label">Sellers</span>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat-card">
+          <span class="hero-stat-number" data-target="800">0</span><span class="hero-stat-suffix">+</span>
+          <span class="hero-stat-label">Active Brokers</span>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat-card">
+          <span class="hero-stat-number" data-target="15000">0</span><span class="hero-stat-suffix">+</span>
+          <span class="hero-stat-label">Products Listed</span>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat-card">
+          <span class="hero-stat-number" data-target="98">0</span><span class="hero-stat-suffix">%</span>
+          <span class="hero-stat-label">Satisfaction</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== BRAND BAR ===== -->
+  <section class="brand-bar">
+    <div class="container">
+      <p class="brand-bar-text reveal">Trusted by growing businesses across the country</p>
+    </div>
+  </section>
+
+  <!-- ===== FEATURES ===== -->
+  <section id="features" class="section features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag reveal">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Why DigitQuo
+        </span>
+        <h2 class="section-title reveal reveal-delay-1">Everything you need,<br />nothing you don't.</h2>
+        <p class="section-subtitle reveal reveal-delay-2">Powerful features designed to make marketing and selling simple, fast, and profitable.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <h3 class="feature-title">Effortless Listings</h3>
+          <p class="feature-desc">Add products in seconds with our streamlined listing flow. Upload photos, set prices, and go live — no complexity.</p>
+          <span class="feature-link">Learn more →</span>
+        </div>
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <h3 class="feature-title">Smart Discovery</h3>
+          <p class="feature-desc">Brokers discover exactly the products their customers need with intelligent filters and real-time availability.</p>
+          <span class="feature-link">Learn more →</span>
+        </div>
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3 class="feature-title">Secure &amp; Trusted</h3>
+          <p class="feature-desc">Every transaction is protected. Verified sellers, transparent deals, and complete peace of mind on every order.</p>
+          <span class="feature-link">Learn more →</span>
+        </div>
+        <div class="feature-card reveal reveal-delay-3">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <h3 class="feature-title">Real-time Analytics</h3>
+          <p class="feature-desc">Track sales, views, and performance with a clean dashboard. Make data-driven decisions that grow your margins.</p>
+          <span class="feature-link">Learn more →</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HOW IT WORKS ===== -->
+  <section id="how-it-works" class="section how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag reveal">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          How It Works
+        </span>
+        <h2 class="section-title reveal reveal-delay-1">Three simple steps.<br />Zero complexity.</h2>
+        <p class="section-subtitle reveal reveal-delay-2">Get started in under a minute and start growing your business today.</p>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card reveal">
+          <div class="step-number-wrap">
+            <span class="step-number">01</span>
+            <div class="step-line"></div>
+          </div>
+          <div class="step-content">
+            <h3 class="step-title">Create Your Account</h3>
+            <p class="step-desc">Sign up as a Seller or Broker. It takes under a minute — no credit card required. Just your email and you're in.</p>
+          </div>
+        </div>
+        <div class="step-card reveal reveal-delay-1">
+          <div class="step-number-wrap">
+            <span class="step-number">02</span>
+            <div class="step-line"></div>
+          </div>
+          <div class="step-content">
+            <h3 class="step-title">List or Browse Products</h3>
+            <p class="step-desc">Sellers list products with photos and pricing. Brokers browse the catalog and connect directly with sellers.</p>
+          </div>
+        </div>
+        <div class="step-card reveal reveal-delay-2">
+          <div class="step-number-wrap">
+            <span class="step-number">03</span>
+          </div>
+          <div class="step-content">
+            <h3 class="step-title">Sell &amp; Grow</h3>
+            <p class="step-desc">Close deals, track your performance with real-time analytics, and scale your business with data-driven insights.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== WHO IT'S FOR (ROLES) ===== -->
+  <section id="roles" class="section roles">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag reveal">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          Who It's For
+        </span>
+        <h2 class="section-title reveal reveal-delay-1">Built for both sides<br />of modern trade.</h2>
+        <p class="section-subtitle reveal reveal-delay-2">Whether you sell products or source the right deals — there's a panel built for you.</p>
+      </div>
+      <div class="roles-grid">
+        <!-- Seller -->
+        <div class="role-card reveal">
+          <div class="role-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <h3 class="role-title">Sellers</h3>
+          <p class="role-desc">List your products, set your prices, and let brokers find you. Manage everything from a single dashboard.</p>
+          <ul class="role-features">
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Product catalog management
+            </li>
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Inventory tracking
+            </li>
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Order notifications
+            </li>
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Sales analytics
+            </li>
+          </ul>
+          <a href="shopkeeper.html" class="btn btn-glass btn-sm" id="btn-role-shop">Become a Seller →</a>
+        </div>
+        <!-- Broker -->
+        <div class="role-card role-card-featured reveal reveal-delay-1">
+          <div class="role-badge">Most Popular</div>
+          <div class="role-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          </div>
+          <h3 class="role-title">Brokers</h3>
+          <p class="role-desc">Discover products from verified sellers. Buy in bulk, resell to your network, and earn on every deal.</p>
+          <ul class="role-features">
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Advanced product search
+            </li>
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Bulk order management
+            </li>
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Commission tracking
+            </li>
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Buyer network tools
+            </li>
+          </ul>
+          <a href="broker.html" class="btn btn-primary btn-sm" id="btn-role-broker">Become a Broker →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TESTIMONIALS ===== -->
+  <section id="testimonials" class="section testimonials">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag reveal">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Testimonials
+        </span>
+        <h2 class="section-title reveal reveal-delay-1">Loved by businesses<br />that move fast.</h2>
+      </div>
+      <div class="testimonials-grid">
+        <div class="testimonial-card reveal">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"DigitQuo transformed how I sell. I listed my products once, and brokers started reaching out within hours. It's the simplest tool I've ever used."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">RK</div>
+            <div>
+              <p class="testimonial-name">Rahul Kumar</p>
+              <p class="testimonial-role">Seller, Delhi</p>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card reveal reveal-delay-1">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"As a broker, finding quality products used to take days. Now I browse, connect, and close deals — all from one place. Absolute game changer."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">PS</div>
+            <div>
+              <p class="testimonial-name">Priya Sharma</p>
+              <p class="testimonial-role">Broker, Mumbai</p>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card reveal reveal-delay-2">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"The analytics make it easy to see which products are moving and where to focus next. Clean, fast, and genuinely useful."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">NM</div>
+            <div>
+              <p class="testimonial-name">Neha Malhotra</p>
+              <p class="testimonial-role">Seller, Jaipur</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA ===== -->
+  <section id="contact" class="section cta-section">
+    <div class="container">
+      <div class="cta-box reveal">
+        <div class="cta-glow"></div>
+        <h2 class="cta-title">Ready to grow your business?</h2>
+        <p class="cta-desc">Join thousands of sellers and brokers already thriving on DigitQuo. Start free — no credit card needed.</p>
+        <div class="cta-actions">
+          <a href="#roles" class="btn btn-primary btn-lg" id="cta-start">
+            Get started today
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </a>
+          <a href="#" class="btn btn-glass btn-lg" id="cta-contact">Talk to sales</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="logo">
+            <span class="logo-mark">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/></svg>
+            </span>
+            <span class="logo-text">DigitQuo</span>
+          </a>
+          <p class="footer-tagline">The smarter way to market and sell. Connecting sellers and brokers on one platform.</p>
+          <div class="footer-socials">
+            <a href="#" class="social-link" aria-label="Twitter">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/></svg>
+            </a>
+            <a href="#" class="social-link" aria-label="LinkedIn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+            </a>
+            <a href="#" class="social-link" aria-label="Instagram">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Product</h4>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#">Pricing</a></li>
+            <li><a href="#">API</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Company</h4>
+          <ul>
+            <li><a href="#">About</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Legal</h4>
+          <ul>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+            <li><a href="#">Cookie Policy</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 DigitQuo. All rights reserved.</p>
+        <p>Made with passion for modern trade.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
