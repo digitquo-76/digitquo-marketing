@@ -1771,6 +1771,71 @@ body {
   }
 }
 
+@media (max-width: 1080px) {
+  .nav-links,
+  .nav-actions {
+    display: none;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .nav-links.mobile-open {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2xl);
+    background:
+      radial-gradient(circle at 50% 28%, rgba(196, 181, 253, 0.45), transparent 18rem),
+      var(--color-bg);
+  }
+
+  .nav-links.mobile-open a {
+    font-size: var(--font-size-xl);
+    white-space: nowrap;
+  }
+
+  .nav-actions.mobile-open {
+    display: flex;
+    position: fixed;
+    z-index: 999;
+    right: 0;
+    bottom: var(--space-3xl);
+    left: 0;
+    width: min(360px, calc(100% - 32px));
+    margin: 0 auto;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-md);
+  }
+
+  .nav-actions.mobile-open .btn {
+    width: 100%;
+  }
+
+  .hero-title {
+    max-width: 780px;
+    font-size: 3.75rem;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1080px) {
+  .hero {
+    min-height: auto;
+    padding-top: 136px;
+    padding-bottom: var(--space-4xl);
+  }
+
+  .hero-subtitle {
+    max-width: 680px;
+  }
+}
+
 @media (max-width: 560px) {
   .hero .container {
     max-width: 360px;
