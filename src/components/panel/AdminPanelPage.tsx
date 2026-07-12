@@ -130,18 +130,19 @@ export function AdminPanelPage({ section }: { section: AdminSection }) {
               </header>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Product</th><th>Seller</th><th>Price</th><th>Stock</th><th>Status</th><th>Added</th></tr></thead>
+                  <thead><tr><th>Product</th><th>Seller</th><th>MRP</th><th>Selling price</th><th>Stock</th><th>Status</th><th>Added</th></tr></thead>
                   <tbody>
                     {store.products.length ? store.products.map((product) => (
                       <tr key={product.id}>
                         <td><ProductCell product={product} /></td>
                         <td>{product.seller}</td>
+                        <td>{formatCurrency(product.mrp ?? product.price)}</td>
                         <td>{formatCurrency(product.price)}</td>
                         <td>{product.stock}</td>
                         <td><StockBadge stock={product.stock} /></td>
                         <td>{formatDate(product.createdAt)}</td>
                       </tr>
-                    )) : <EmptyRow colSpan={6} title="No products found" text="Seller listings will appear here." />}
+                    )) : <EmptyRow colSpan={7} title="No products found" text="Seller listings will appear here." />}
                   </tbody>
                 </table>
               </div>

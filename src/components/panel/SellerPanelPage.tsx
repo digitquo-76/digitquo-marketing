@@ -41,7 +41,7 @@ export function SellerPanelPage({ section }: { section: SellerSection }) {
       store.addActivity('product', `${CURRENT_SELLER} updated ${values.name}.`);
       store.showToast('Product updated successfully.', 'success');
     } else {
-      store.setProducts([createProduct(values.name, values.category, values.price, values.stock, CURRENT_SELLER, values.image, values.description), ...store.products]);
+      store.setProducts([createProduct(values.name, values.category, values.price, values.stock, CURRENT_SELLER, values.image, values.description, values.mrp), ...store.products]);
       store.addActivity('product', `${CURRENT_SELLER} published ${values.name}.`);
       store.showToast('Product is now available to brokers.', 'success');
     }
@@ -148,12 +148,13 @@ export function SellerPanelPage({ section }: { section: SellerSection }) {
               </header>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Product</th><th>Category</th><th>MRP</th><th>Selling price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody>
                     {visibleProducts.length ? visibleProducts.map((product) => (
                       <tr key={product.id}>
                         <td><ProductCell product={product} /></td>
                         <td>{product.category}</td>
+                        <td>{formatCurrency(product.mrp ?? product.price)}</td>
                         <td>{formatCurrency(product.price)}</td>
                         <td>{product.stock}</td>
                         <td><StockBadge stock={product.stock} /></td>
@@ -164,7 +165,7 @@ export function SellerPanelPage({ section }: { section: SellerSection }) {
                           </div>
                         </td>
                       </tr>
-                    )) : <EmptyRow colSpan={6} title="No products found" text="Add your first product or adjust your search." />}
+                    )) : <EmptyRow colSpan={7} title="No products found" text="Add your first product or adjust your search." />}
                   </tbody>
                 </table>
               </div>

@@ -32,5 +32,5 @@ export function formatNumber(num: number): string {
 }
 
 export function safeImageUrl(url: string): string {
-  return /^https?:\/\//i.test(url) ? url : '';
+  return /^(https?:\/\/|data:image\/)/i.test(url) ? url : '';
 }

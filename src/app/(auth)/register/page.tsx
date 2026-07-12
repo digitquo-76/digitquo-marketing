@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRightIcon, HomeIcon, UsersIcon } from '../../../components/ui/icons';
+import { registerAccount, routeForRole } from '../../../lib/auth';
 
 function RegisterForm() {
   const router = useRouter();
@@ -16,6 +17,8 @@ function RegisterForm() {
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('retail');
   const [market, setMarket] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const roleParam = searchParams.get('role');
@@ -26,11 +29,26 @@ function RegisterForm() {
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    if (role === 'broker') {
-      router.push('/broker');
-    } else {
-      router.push('/seller');
+    setError('');
+    setSubmitting(true);
+
+    const displayName = role === 'seller' ? businessName.trim() || name.trim() : name.trim();
+    const result = registerAccount({
+      name: displayName,
+      email,
+      password,
+      role,
+      businessName: role === 'seller' ? businessName.trim() : undefined,
+      market: role === 'broker' ? market.trim() : undefined
+    });
+
+    if (!result.ok) {
+      setSubmitting(false);
+      setError(result.message);
+      return;
     }
+
+    router.push(routeForRole(result.session.role));
   };
 
   return (
@@ -84,6 +102,7 @@ function RegisterForm() {
           </div>
 
           <form onSubmit={handleRegister} className="auth-form">
+            {error && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
             <div className="auth-field-group">
               <label className="auth-label" htmlFor="name">Full name</label>
               <input
@@ -174,7 +193,7 @@ function RegisterForm() {
             )}
 
             <button type="submit" className="btn btn-primary auth-submit">
-              Create account <ArrowRightIcon size={16} />
+              {submitting ? 'Creating account...' : 'Create account'} <ArrowRightIcon size={16} />
             </button>
           </form>
 

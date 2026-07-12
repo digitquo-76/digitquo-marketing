@@ -142,7 +142,10 @@ export function BrokerPanelPage({ section }: { section: BrokerSection }) {
                         <p className="catalog-seller">{product.seller}</p>
                         <h3 className="catalog-name">{product.name}</h3>
                         <div className="catalog-meta">
-                          <span className="catalog-price">{formatCurrency(product.price)}</span>
+                          <span className="catalog-price-stack">
+                            {(product.mrp ?? product.price) > product.price && <span className="catalog-mrp">{formatCurrency(product.mrp ?? product.price)}</span>}
+                            <span className="catalog-price">{formatCurrency(product.price)}</span>
+                          </span>
                           <span className="catalog-stock">{product.stock} available</span>
                         </div>
                         <button className="btn-panel btn-panel-primary" type="button" onClick={() => setSaleProduct(product)}>Record customer sale</button>

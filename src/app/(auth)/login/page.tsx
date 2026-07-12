@@ -4,19 +4,28 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, ShieldIcon } from '../../../components/ui/icons';
+import { DEMO_PASSWORD, loginAccount, routeForRole } from '../../../lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.toLowerCase().includes('broker')) {
-      router.push('/broker');
-    } else {
-      router.push('/seller');
+    setError('');
+    setSubmitting(true);
+
+    const result = loginAccount(email, password);
+    if (!result.ok) {
+      setSubmitting(false);
+      setError(result.message);
+      return;
     }
+
+    router.push(routeForRole(result.session.role));
   };
 
   return (
@@ -50,6 +59,7 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="auth-form">
+            {error && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
             <div className="auth-field-group">
               <label className="auth-label" htmlFor="email">Email address</label>
               <input
@@ -82,9 +92,15 @@ export default function LoginPage() {
             </div>
 
             <button type="submit" className="btn btn-primary auth-submit">
-              Sign in <ArrowRightIcon size={16} />
+              {submitting ? 'Signing in...' : 'Sign in'} <ArrowRightIcon size={16} />
             </button>
           </form>
+
+          <div className="auth-demo-box">
+            <strong>Demo login</strong>
+            <span>seller@digitquo.com / {DEMO_PASSWORD}</span>
+            <span>broker@digitquo.com / {DEMO_PASSWORD}</span>
+          </div>
 
           <p className="auth-alt">
             New to DigitQuo?{' '}

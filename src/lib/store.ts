@@ -26,11 +26,12 @@ function writeStore<T>(key: string, value: T[]) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-function createProduct(name: string, category: string, price: number, stock: number, seller: string, image = '', description = ''): Product {
+function createProduct(name: string, category: string, price: number, stock: number, seller: string, image = '', description = '', mrp = price): Product {
   return {
     id: `prd_${Date.now()}_${Math.random().toString(16).slice(2)}`,
     name,
     category,
+    mrp: Number(mrp) || Number(price),
     price: Number(price),
     stock: Number(stock),
     seller,
