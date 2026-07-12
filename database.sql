@@ -6,8 +6,15 @@ create table if not exists public.profiles (
   role text not null check (role in ('seller', 'broker', 'admin')),
   email text not null,
   display_name text,
+  business_name text,
+  business_type text,
+  market text,
   created_at timestamptz not null default timezone('utc'::text, now())
 );
+
+alter table public.profiles add column if not exists business_name text;
+alter table public.profiles add column if not exists business_type text;
+alter table public.profiles add column if not exists market text;
 
 create table if not exists public.products (
   id text primary key,
@@ -83,15 +90,87 @@ as $$
   select coalesce(display_name, email) from public.profiles where id = auth.uid()
 $$;
 
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  requested_role text;
+begin
+  requested_role := coalesce(new.raw_user_meta_data->>'role', 'seller');
+
+  if requested_role not in ('seller', 'broker') then
+    requested_role := 'seller';
+  end if;
+
+  insert into public.profiles (
+    id,
+    role,
+    email,
+    display_name,
+    business_name,
+    business_type,
+    market
+  )
+  values (
+    new.id,
+    requested_role,
+    coalesce(new.email, ''),
+    nullif(new.raw_user_meta_data->>'full_name', ''),
+    case when requested_role = 'seller' then nullif(new.raw_user_meta_data->>'business_name', '') else null end,
+    case when requested_role = 'seller' then nullif(new.raw_user_meta_data->>'business_type', '') else null end,
+    case when requested_role = 'broker' then nullif(new.raw_user_meta_data->>'market', '') else null end
+  )
+  on conflict (id) do update
+  set
+    email = excluded.email,
+    display_name = excluded.display_name,
+    business_name = excluded.business_name,
+    business_type = excluded.business_type,
+    market = excluded.market;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+insert into public.profiles (
+  id,
+  role,
+  email,
+  display_name,
+  business_name,
+  business_type,
+  market
+)
+select
+  users.id,
+  case
+    when users.raw_user_meta_data->>'role' in ('seller', 'broker') then users.raw_user_meta_data->>'role'
+    else 'seller'
+  end as role,
+  coalesce(users.email, '') as email,
+  nullif(users.raw_user_meta_data->>'full_name', '') as display_name,
+  case when users.raw_user_meta_data->>'role' = 'seller' then nullif(users.raw_user_meta_data->>'business_name', '') else null end as business_name,
+  case when users.raw_user_meta_data->>'role' = 'seller' then nullif(users.raw_user_meta_data->>'business_type', '') else null end as business_type,
+  case when users.raw_user_meta_data->>'role' = 'broker' then nullif(users.raw_user_meta_data->>'market', '') else null end as market
+from auth.users as users
+where not exists (
+  select 1 from public.profiles where profiles.id = users.id
+);
+
 drop policy if exists "profiles read own or admin" on public.profiles;
 create policy "profiles read own or admin"
 on public.profiles for select
 using (id = auth.uid() or public.current_profile_role() = 'admin');
 
 drop policy if exists "profiles insert own" on public.profiles;
-create policy "profiles insert own"
-on public.profiles for insert
-with check (id = auth.uid() and role in ('seller', 'broker'));
 
 drop policy if exists "profiles update own display name or admin" on public.profiles;
 create policy "profiles update own display name or admin"

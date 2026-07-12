@@ -35,13 +35,16 @@ function RegisterForm() {
 
     const displayName = role === 'seller' ? businessName.trim() || name.trim() : name.trim();
 
-    // 1. Sign up the user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: displayName,
+          role,
+          business_name: role === 'seller' ? businessName.trim() : null,
+          business_type: role === 'seller' ? businessType : null,
+          market: role === 'broker' ? market.trim() : null,
         }
       }
     });
@@ -52,21 +55,6 @@ function RegisterForm() {
       return;
     }
 
-    // 2. Insert into profiles table
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: authData.user.id,
-      role: role,
-      email: email,
-      display_name: displayName,
-    });
-
-    if (profileError) {
-      setSubmitting(false);
-      setError(profileError.message || 'Account was created, but the profile could not be saved. Please contact support.');
-      return;
-    }
-
-    // 3. Navigate to their dashboard
     router.push(routeForRole(role));
   };
 

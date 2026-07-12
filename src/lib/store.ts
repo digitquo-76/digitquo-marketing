@@ -11,6 +11,9 @@ type Profile = {
   role: 'seller' | 'broker' | 'admin';
   email: string;
   display_name?: string | null;
+  business_name?: string | null;
+  business_type?: string | null;
+  market?: string | null;
 };
 
 export function useDigitQuoStore() {
@@ -185,7 +188,7 @@ export function useDigitQuoStore() {
   };
 
   // Helper getters to replace static constants
-  const currentSellerName = profile?.role === 'seller' ? profile.display_name || user?.user_metadata?.full_name || profile.email : 'My Store';
+  const currentSellerName = profile?.role === 'seller' ? profile.business_name || profile.display_name || user?.user_metadata?.full_name || profile.email : 'My Store';
   const currentBrokerName = profile?.role === 'broker' ? profile.display_name || user?.user_metadata?.full_name || profile.email : 'Partner Broker';
 
   return { 
