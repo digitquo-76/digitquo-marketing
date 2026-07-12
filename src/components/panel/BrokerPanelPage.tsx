@@ -10,7 +10,7 @@ import { DashboardShell } from './DashboardShell';
 import { EmptyRow, Metric, ProductImage } from './Shared';
 import { SaleModal } from './Modals';
 import { ToastRegion } from '../ui/ToastRegion';
-import { GridIcon, HomeIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon, StarIcon } from '../ui/icons';
+import { GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon, StarIcon } from '../ui/icons';
 
 type BrokerSection = 'overview' | 'catalog' | 'sales' | 'rewards' | 'product';
 
@@ -27,7 +27,11 @@ export function BrokerPanelPage({ section, productId }: { section: BrokerSection
       router.replace('/login');
       return;
     }
-    if (store.profile?.role && store.profile.role !== 'broker') {
+    if (!store.profile?.role) {
+      router.replace('/login');
+      return;
+    }
+    if (store.profile.role !== 'broker') {
       router.replace(routeForRole(store.profile.role));
     }
   }, [router, store.loading, store.profile?.role, store.user]);
@@ -118,8 +122,7 @@ export function BrokerPanelPage({ section, productId }: { section: BrokerSection
           ['/broker', 'Overview', <GridIcon key="grid" />],
           ['/broker/catalog', 'Product catalog', <SearchIcon size={18} key="search" />],
           ['/broker/sales', 'My sales', <SaleIcon key="sale" />],
-          ['/broker/rewards', 'Rewards', <WalletIcon key="wallet" />],
-          ['/seller', 'View seller panel', <HomeIcon size={18} key="home" />]
+          ['/broker/rewards', 'Rewards', <WalletIcon key="wallet" />]
         ]}
         user={{ initials: currentBroker.slice(0, 2).toUpperCase(), name: currentBroker, role: 'Broker account' }}
         title="Broker workspace"

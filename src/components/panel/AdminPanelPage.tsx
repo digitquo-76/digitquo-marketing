@@ -22,7 +22,11 @@ export function AdminPanelPage({ section }: { section: AdminSection }) {
       router.replace('/login');
       return;
     }
-    if (store.profile?.role && store.profile.role !== 'admin') {
+    if (!store.profile?.role) {
+      router.replace('/login');
+      return;
+    }
+    if (store.profile.role !== 'admin') {
       router.replace(routeForRole(store.profile.role));
     }
   }, [router, store.loading, store.profile?.role, store.user]);

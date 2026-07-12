@@ -27,7 +27,11 @@ export function SellerPanelPage({ section }: { section: SellerSection }) {
       router.replace('/login');
       return;
     }
-    if (store.profile?.role && store.profile.role !== 'seller') {
+    if (!store.profile?.role) {
+      router.replace('/login');
+      return;
+    }
+    if (store.profile.role !== 'seller') {
       router.replace(routeForRole(store.profile.role));
     }
   }, [router, store.loading, store.profile?.role, store.user]);
@@ -94,8 +98,7 @@ export function SellerPanelPage({ section }: { section: SellerSection }) {
         nav={[
           ['/seller', 'Overview', <GridIcon key="grid" />],
           ['/seller/products', 'My products', <PackageIcon key="package" />],
-          ['/seller/activity', 'Activity', <ActivityIcon key="activity" />],
-          ['/broker', 'View broker panel', <SearchIcon size={18} key="search" />]
+          ['/seller/activity', 'Activity', <ActivityIcon key="activity" />]
         ]}
         user={{ initials: currentSeller.slice(0,2).toUpperCase(), name: currentSeller, role: 'Seller account' }}
         title="Seller workspace"
