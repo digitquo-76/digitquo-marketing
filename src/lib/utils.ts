@@ -34,3 +34,9 @@ export function formatNumber(num: number): string {
 export function safeImageUrl(url: string): string {
   return /^(https?:\/\/|data:image\/)/i.test(url) ? url : '';
 }
+
+export function routeForRole(role: string) {
+  if (role === 'admin') return '/admin';
+  if (role === 'broker') return '/broker';
+  return '/seller';
+}

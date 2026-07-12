@@ -232,3 +232,13 @@ export function BackIcon() {
     </Svg>
   );
 }
+
+export function WalletIcon({ size = 18 }) {
+  return (
+    <Svg size={size}>
+      <path d="M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2v-5" />
+      <path d="M19 12a2 2 0 100-4h2v4h-2z" />
+    </Svg>
+  );
+}
+

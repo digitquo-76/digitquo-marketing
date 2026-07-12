@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CURRENT_SELLER, createProduct, useDigitQuoStore } from '../../lib/store';
+import { useRouter } from 'next/navigation';
+import { useDigitQuoStore } from '../../lib/store';
 import { Product } from '../../types';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, routeForRole } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { ActivityList, EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
 import { ProductModal } from './Modals';
@@ -15,15 +16,30 @@ type SellerSection = 'overview' | 'products' | 'activity';
 
 export function SellerPanelPage({ section }: { section: SellerSection }) {
   const store = useDigitQuoStore();
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
 
-  const myProducts = store.products.filter((product) => product.seller === CURRENT_SELLER);
+  useEffect(() => {
+    if (store.loading) return;
+    if (!store.user) {
+      router.replace('/login');
+      return;
+    }
+    if (store.profile?.role && store.profile.role !== 'seller') {
+      router.replace(routeForRole(store.profile.role));
+    }
+  }, [router, store.loading, store.profile?.role, store.user]);
+
+  if (store.loading || !store.user || store.profile?.role !== 'seller') return <div style={{ padding: '40px' }}>Loading workspace...</div>;
+
+  const currentSeller = store.currentSellerName;
+  const myProducts = store.products.filter((product) => product.seller === currentSeller);
   const myProductIds = new Set(myProducts.map((product) => product.id));
-  const mySales = store.sales.filter((sale) => myProductIds.has(sale.productId) || sale.seller === CURRENT_SELLER);
+  const mySales = store.sales.filter((sale) => myProductIds.has(sale.productId) || sale.seller === currentSeller);
   const visibleProducts = myProducts.filter((product) => `${product.name} ${product.category}`.toLowerCase().includes(search.trim().toLowerCase()));
-  const activity = store.activity.filter((item) => item.message.includes(CURRENT_SELLER) || item.type === 'sale').slice(0, 12);
+  const activity = store.activity.filter((item) => item.message.includes(currentSeller) || item.type === 'sale').slice(0, 12);
   const lowStockCount = myProducts.filter((product) => product.stock > 0 && product.stock <= 10).length;
   const inventoryCount = myProducts.reduce((sum, product) => sum + product.stock, 0);
   const salesValue = mySales.reduce((sum, sale) => sum + sale.total, 0);
@@ -33,27 +49,42 @@ export function SellerPanelPage({ section }: { section: SellerSection }) {
     setModalOpen(true);
   };
 
-  const saveProduct = (values: any) => {
-    if (editing) {
-      store.setProducts(store.products.map((product) => (
-        product.id === editing.id && product.seller === CURRENT_SELLER ? { ...product, ...values } : product
-      )));
-      store.addActivity('product', `${CURRENT_SELLER} updated ${values.name}.`);
-      store.showToast('Product updated successfully.', 'success');
-    } else {
-      store.setProducts([createProduct(values.name, values.category, values.price, values.stock, CURRENT_SELLER, values.image, values.description, values.mrp), ...store.products]);
-      store.addActivity('product', `${CURRENT_SELLER} published ${values.name}.`);
-      store.showToast('Product is now available to brokers.', 'success');
+  const saveProduct = async (values: any) => {
+    try {
+      if (editing) {
+        await store.updateProduct({ ...editing, ...values });
+        await store.addActivity('product', `${currentSeller} updated ${values.name}.`);
+        store.showToast('Product updated successfully.', 'success');
+      } else {
+        await store.addProduct({
+          name: values.name,
+          category: values.category,
+          price: Number(values.price),
+          mrp: Number(values.mrp) || Number(values.price),
+          stock: Number(values.stock),
+          seller: currentSeller,
+          image: values.image || '',
+          description: values.description || ''
+        });
+        await store.addActivity('product', `${currentSeller} published ${values.name}.`);
+        store.showToast('Product is now available to brokers.', 'success');
+      }
+      setModalOpen(false);
+      setEditing(null);
+    } catch (error) {
+      store.showToast(error instanceof Error ? error.message : 'Could not save product.', 'error');
     }
-    setModalOpen(false);
-    setEditing(null);
   };
 
-  const deleteProduct = (product: Product) => {
+  const deleteProduct = async (product: Product) => {
     if (!window.confirm(`Remove "${product.name}" from your listings?`)) return;
-    store.setProducts(store.products.filter((item) => item.id !== product.id));
-    store.addActivity('product', `${CURRENT_SELLER} removed ${product.name}.`);
-    store.showToast('Product removed.', 'success');
+    try {
+      await store.deleteProduct(product.id);
+      await store.addActivity('product', `${currentSeller} removed ${product.name}.`);
+      store.showToast('Product removed.', 'success');
+    } catch (error) {
+      store.showToast(error instanceof Error ? error.message : 'Could not remove product.', 'error');
+    }
   };
 
   return (
@@ -66,11 +97,12 @@ export function SellerPanelPage({ section }: { section: SellerSection }) {
           ['/seller/activity', 'Activity', <ActivityIcon key="activity" />],
           ['/broker', 'View broker panel', <SearchIcon size={18} key="search" />]
         ]}
-        user={{ initials: 'MS', name: 'My Store', role: 'Seller account' }}
+        user={{ initials: currentSeller.slice(0,2).toUpperCase(), name: currentSeller, role: 'Seller account' }}
         title="Seller workspace"
         actions={(
           <div className="topbar-actions">
             <Link className="btn-panel btn-panel-secondary" href="/">View website</Link>
+            <button className="btn-panel btn-panel-primary" type="button" onClick={store.logout} style={{ marginRight: '10px' }}>Sign out</button>
             <button className="btn-panel btn-panel-primary" type="button" onClick={openAddProduct}>+ Add product</button>
           </div>
         )}

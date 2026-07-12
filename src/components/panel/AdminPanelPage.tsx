@@ -1,26 +1,50 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { formatCurrency, formatDate, routeForRole } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { ActivityList, EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
 import { ToastRegion } from '../ui/ToastRegion';
-import { ActivityIcon, BackIcon, GridIcon, PackageIcon, SaleIcon, ShieldIcon, UsersIcon } from '../ui/icons';
+import { ActivityIcon, BackIcon, GridIcon, PackageIcon, SaleIcon, ShieldIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
-type AdminSection = 'overview' | 'activity' | 'products' | 'transactions';
+type AdminSection = 'overview' | 'activity' | 'products' | 'transactions' | 'claims';
 
 export function AdminPanelPage({ section }: { section: AdminSection }) {
   const store = useDigitQuoStore();
+  const router = useRouter();
+  
+  useEffect(() => {
+    if (store.loading) return;
+    if (!store.user) {
+      router.replace('/login');
+      return;
+    }
+    if (store.profile?.role && store.profile.role !== 'admin') {
+      router.replace(routeForRole(store.profile.role));
+    }
+  }, [router, store.loading, store.profile?.role, store.user]);
+
+  if (store.loading || !store.user || store.profile?.role !== 'admin') return <div style={{ padding: '40px' }}>Loading workspace...</div>;
+
   const sellers = new Set(store.products.map((product) => product.seller));
   const brokers = new Set(store.sales.map((sale) => sale.broker));
   const grossSales = store.sales.reduce((sum, sale) => sum + sale.total, 0);
   const unitsSold = store.sales.reduce((sum, sale) => sum + sale.quantity, 0);
 
-  const resetData = () => {
-    if (!window.confirm('Reset products, sales, and activity to the original demo data?')) return;
-    store.resetDemoData();
-    store.showToast('Demo data restored.', 'success');
+  const pendingClaimsCount = store.claims.filter(c => c.status === 'pending').length;
+  const totalPaidOut = store.claims.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.points, 0);
+
+  const markAsPaid = async (claimId: string, broker: string, points: number) => {
+    try {
+      await store.updateClaimStatus(claimId, 'paid');
+      await store.addActivity('sale', `Platform paid out ${points} pts to ${broker}.`);
+      store.showToast('Claim marked as paid.', 'success');
+    } catch (error) {
+      store.showToast(error instanceof Error ? error.message : 'Could not update claim.', 'error');
+    }
   };
 
   return (
@@ -32,11 +56,12 @@ export function AdminPanelPage({ section }: { section: AdminSection }) {
           ['/admin/activity', 'All activity', <ActivityIcon key="activity" />],
           ['/admin/products', 'All products', <PackageIcon key="package" />],
           ['/admin/transactions', 'Transactions', <SaleIcon key="sale" />],
+          ['/admin/claims', 'Claims & Payouts', <WalletIcon key="wallet" />],
           ['/', 'Back to website', <BackIcon key="back" />]
         ]}
         user={{ initials: 'OA', name: 'Owner Admin', role: 'Full platform access' }}
         title="Owner administration"
-        actions={<button className="btn-panel btn-panel-secondary" type="button" onClick={resetData}>Reset demo data</button>}
+        actions={<button className="btn-panel btn-panel-secondary" type="button" onClick={store.logout}>Sign out</button>}
       >
         {section === 'overview' && (
           <>
@@ -44,7 +69,7 @@ export function AdminPanelPage({ section }: { section: AdminSection }) {
               <div>
                 <p className="eyebrow">Platform command centre</p>
                 <h1 className="page-title">Every activity, organized by page.</h1>
-                <p className="page-description">Monitor seller listings, broker transactions, inventory movement, and platform activity from dedicated admin sections.</p>
+                <p className="page-description">Monitor seller listings, broker transactions, inventory movement, and platform payouts from dedicated admin sections.</p>
               </div>
             </section>
 
@@ -56,8 +81,8 @@ export function AdminPanelPage({ section }: { section: AdminSection }) {
             <section className="metrics-grid" aria-label="Platform metrics">
               <Metric icon={<UsersIcon size={18} />} value={sellers.size + brokers.size} label="Active platform accounts" />
               <Metric icon={<PackageIcon size={18} />} value={store.products.length} label="Product listings" />
-              <Metric icon={<GridIcon />} value={unitsSold} label="Units sold" />
               <Metric icon={<SaleIcon size={18} />} value={formatCurrency(grossSales)} label="Gross sales volume" />
+              <Metric icon={<WalletIcon size={18} />} value={pendingClaimsCount} label="Pending payouts" />
             </section>
 
             <section className="dashboard-grid">
@@ -76,13 +101,13 @@ export function AdminPanelPage({ section }: { section: AdminSection }) {
               <aside className="panel-card">
                 <header className="panel-card-header">
                   <div>
-                    <h2 className="panel-card-title">Transaction control</h2>
-                    <p className="panel-card-subtitle">Audit all broker sales separately</p>
+                    <h2 className="panel-card-title">Payouts control</h2>
+                    <p className="panel-card-subtitle">Manage broker commissions</p>
                   </div>
-                  <Link className="btn-panel btn-panel-secondary" href="/admin/transactions">View transactions</Link>
+                  <Link className="btn-panel btn-panel-secondary" href="/admin/claims">View claims</Link>
                 </header>
                 <div className="panel-card-body">
-                  <p className="page-description">{store.sales.length} transactions total {formatCurrency(grossSales)}.</p>
+                  <p className="page-description">{pendingClaimsCount} claims pending review. Total paid out to date: {formatCurrency(totalPaidOut)} (equiv. points).</p>
                 </div>
               </aside>
             </section>
@@ -181,6 +206,59 @@ export function AdminPanelPage({ section }: { section: AdminSection }) {
                         <td>{formatDate(sale.createdAt)}</td>
                       </tr>
                     )) : <EmptyRow colSpan={6} title="No transaction activity" text="Sales recorded by brokers will appear here." />}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
+        )}
+
+        {section === 'claims' && (
+          <>
+            <section className="page-heading">
+              <div>
+                <p className="eyebrow">Payouts</p>
+                <h1 className="page-title">Broker claims.</h1>
+                <p className="page-description">Manage payout requests from brokers. Process payments and mark them as paid.</p>
+              </div>
+            </section>
+
+            <section className="metrics-grid">
+              <Metric icon={<WalletIcon size={18} />} value={pendingClaimsCount} label="Pending claims" />
+              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(totalPaidOut)} label="Total points paid out" />
+            </section>
+
+            <section className="panel-card" style={{ marginTop: '2rem' }}>
+              <header className="panel-card-header">
+                <div>
+                  <h2 className="panel-card-title">All claim requests</h2>
+                  <p className="panel-card-subtitle">Requested broker commissions</p>
+                </div>
+              </header>
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead><tr><th>Claim ID</th><th>Broker</th><th>Points (Value)</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {store.claims.length ? store.claims.map((claim) => (
+                      <tr key={claim.id}>
+                        <td><span className="cell-title">{claim.id}</span></td>
+                        <td>{claim.broker}</td>
+                        <td>{claim.points} ({formatCurrency(claim.points)})</td>
+                        <td>
+                          {claim.status === 'paid' ? 
+                            <span className="badge badge-success">Paid out</span> : 
+                            <span className="badge badge-warning">Pending</span>}
+                        </td>
+                        <td>{formatDate(claim.createdAt)}</td>
+                        <td>
+                          {claim.status === 'pending' && (
+                            <button className="btn-panel btn-panel-secondary" style={{ padding: '4px 8px', fontSize: '13px' }} type="button" onClick={() => markAsPaid(claim.id, claim.broker, claim.points)}>
+                              Mark as paid
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )) : <EmptyRow colSpan={6} title="No claims found" text="Broker payout requests will appear here." />}
                   </tbody>
                 </table>
               </div>
