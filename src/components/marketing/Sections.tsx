@@ -69,7 +69,7 @@ export function RolesSection() {
             title="Sellers"
             desc="List your products, set your prices, and let brokers find you. Manage everything from a single dashboard."
             features={['Product catalog management', 'Inventory tracking', 'Order notifications', 'Sales analytics']}
-            href="/shopkeeper"
+            href="/register?role=seller"
             cta="Become a Seller →"
             icon={<HomeIcon />}
           />
@@ -78,7 +78,7 @@ export function RolesSection() {
             title="Brokers"
             desc="Discover products from verified sellers. Buy in bulk, resell to your network, and earn on every deal."
             features={['Advanced product search', 'Bulk order management', 'Commission tracking', 'Buyer network tools']}
-            href="/broker"
+            href="/register?role=broker"
             cta="Become a Broker →"
             icon={<UsersIcon size={28} />}
           />

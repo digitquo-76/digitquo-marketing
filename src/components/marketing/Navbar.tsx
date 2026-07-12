@@ -74,10 +74,10 @@ export function Navbar() {
           ))}
         </ul>
         <div className={`nav-actions${mobileOpen ? ' mobile-open' : ''}`} id="nav-actions">
-          <Link href="/shopkeeper" className="btn btn-ghost" id="btn-login">Open panel</Link>
-          <a href="#roles" className="btn btn-primary" id="btn-get-started" onClick={closeMobile}>
+          <Link href="/login" className="btn btn-ghost" id="btn-login">Log In</Link>
+          <Link href="/register" className="btn btn-primary" id="btn-get-started" onClick={closeMobile}>
             Get Started <ArrowRightIcon size={14} />
-          </a>
+          </Link>
         </div>
         <button
           className={`hamburger${mobileOpen ? ' active' : ''}`}

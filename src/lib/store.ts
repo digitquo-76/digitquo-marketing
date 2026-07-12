@@ -9,7 +9,7 @@ export const DQ_KEYS = {
   activity: 'digitquo_activity_v1'
 };
 
-export const CURRENT_SHOPKEEPER = 'My Store';
+export const CURRENT_SELLER = 'My Store';
 export const CURRENT_BROKER = 'Partner Broker';
 
 function readStore<T>(key: string): T[] {

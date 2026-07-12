@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { LogoIcon, MenuIcon } from '../ui/icons';
 
 interface DashboardShellProps {
@@ -15,6 +16,7 @@ interface DashboardShellProps {
 
 export function DashboardShell({ label, nav, user, title, actions, children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
   
   // Need to be careful with hydration mismatch on date. 
   const [dateLabel, setDateLabel] = useState('');
@@ -53,11 +55,20 @@ export function DashboardShell({ label, nav, user, title, actions, children }: D
         </Link>
         <p className="panel-label">{label}</p>
         <nav className="sidebar-nav">
-          {nav.map(([href, navLabel, icon], index) => (
-            <Link className={`sidebar-link${index === 0 ? ' active' : ''}`} href={href} key={navLabel} onClick={() => setSidebarOpen(false)}>
-              {icon}{navLabel}
-            </Link>
-          ))}
+          {nav.map(([href, navLabel, icon]) => {
+            const active = pathname === href;
+            return (
+              <Link
+                className={`sidebar-link${active ? ' active' : ''}`}
+                href={href}
+                key={navLabel}
+                aria-current={active ? 'page' : undefined}
+                onClick={() => setSidebarOpen(false)}
+              >
+                {icon}{navLabel}
+              </Link>
+            );
+          })}
         </nav>
         <div className="sidebar-footer">
           <div className="user-chip">

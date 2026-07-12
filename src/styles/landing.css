@@ -75,6 +75,8 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -84,6 +86,7 @@ body {
   background-color: var(--color-bg);
   line-height: 1.6;
   overflow-x: hidden;
+  width: 100%;
 }
 
 a {
@@ -112,6 +115,7 @@ button {
    LAYOUT
    ============================ */
 .container {
+  width: 100%;
   max-width: 1120px;
   margin: 0 auto;
   padding: 0 var(--space-xl);
@@ -487,7 +491,7 @@ button {
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-lg);
 }
 
@@ -977,6 +981,163 @@ button {
 
   .cta-box {
     padding: var(--space-2xl) var(--space-lg);
+  }
+}
+
+
+/* ============================
+   RESPONSIVE POLISH
+   ============================ */
+.hero-inner,
+.section-header,
+.feature-card,
+.role-card,
+.testimonial-card,
+.cta-box,
+.footer-grid,
+.footer-bottom {
+  min-width: 0;
+}
+
+.hero-title,
+.section-title,
+.cta-title,
+.feature-title,
+.role-title,
+.testimonial-text,
+.footer-tagline,
+.brand-bar-text {
+  overflow-wrap: anywhere;
+}
+
+.hero-title,
+.section-title,
+.cta-title {
+  letter-spacing: 0;
+}
+
+@media (max-width: 860px) {
+  .nav-links {
+    gap: var(--space-lg);
+  }
+
+  .nav-actions .btn {
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-actions.mobile-open {
+    width: min(360px, calc(100% - 32px));
+    margin: 0 auto;
+    flex-direction: column;
+  }
+
+  .nav-actions.mobile-open .btn {
+    width: 100%;
+  }
+
+  .hero-cta,
+  .cta-actions {
+    width: min(420px, 100%);
+    margin-inline: auto;
+  }
+
+  .hero-cta .btn,
+  .cta-actions .btn {
+    width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .features-grid,
+  .roles-grid,
+  .testimonials-grid {
+    width: 100%;
+  }
+
+  .footer-brand {
+    max-width: 420px;
+  }
+}
+
+@media (max-width: 560px) {
+  .navbar {
+    padding: 12px 0;
+  }
+
+  .hero {
+    padding-top: 124px;
+  }
+
+  .hero::before {
+    width: 21rem;
+    height: 21rem;
+    top: 8rem;
+  }
+
+  .hero-title {
+    font-size: 2.2rem;
+    line-height: 1.08;
+  }
+
+  .section-title,
+  .cta-title {
+    font-size: 1.85rem;
+    line-height: 1.18;
+  }
+
+  .section-header {
+    margin-bottom: var(--space-2xl);
+  }
+
+  .brand-bar-text {
+    letter-spacing: 0;
+  }
+
+  .role-badge {
+    position: static;
+    display: inline-flex;
+    width: fit-content;
+    margin-bottom: var(--space-md);
+  }
+
+  .footer-socials {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 380px) {
+  .container {
+    padding-inline: 14px;
+  }
+
+  .logo-text {
+    font-size: var(--font-size-base);
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-subtitle,
+  .section-subtitle,
+  .cta-desc {
+    font-size: var(--font-size-sm);
+  }
+
+  .hero-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card,
+  .role-card,
+  .testimonial-card {
+    padding: var(--space-lg);
+  }
+
+  .footer-bottom {
+    align-items: flex-start;
   }
 }
 
@@ -1607,5 +1768,61 @@ body {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero .container {
+    max-width: 360px;
+  }
+
+  .hero-badge {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .hero-title {
+    font-size: 1.62rem;
+    line-height: 1.08;
+  }
+
+  .hero-subtitle {
+    max-width: 30ch;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .hero-cta,
+  .cta-actions {
+    width: min(320px, 100%);
+    max-width: 100%;
+  }
+
+  .hero-cta .btn,
+  .cta-actions .btn {
+    padding-inline: 16px;
+  }
+
+  .hero-stat-label {
+    white-space: normal;
+  }
+
+  .hero-stats {
+    width: min(330px, 100%);
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero .container {
+    max-width: 330px;
+  }
+
+  .hero-title {
+    font-size: 1.5rem;
+  }
+
+  .hero-stats {
+    grid-template-columns: 1fr;
   }
 }

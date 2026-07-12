@@ -5,7 +5,7 @@ DigitQuo Marketing is a React/Next.js marketing website for a marketplace that c
 ## Pages
 
 - `/` - Public landing page with features, process, roles, testimonials, and call-to-action sections.
-- `/shopkeeper` - Seller workspace for managing products, inventory, and sales activity.
+- `/seller` - Seller workspace for managing products, inventory, and sales activity.
 - `/broker` - Broker workspace for browsing seller inventory and recording customer sales.
 - `/admin` - Owner/admin workspace for monitoring marketplace activity, products, and transactions.
 
@@ -13,7 +13,7 @@ DigitQuo Marketing is a React/Next.js marketing website for a marketplace that c
 
 - `app/layout.jsx` - Framework-generated document layout and global metadata.
 - `app/page.jsx` - Public landing route.
-- `app/shopkeeper/page.jsx`, `app/broker/page.jsx`, `app/admin/page.jsx` - Dashboard routes.
+- `app/seller/page.jsx`, `app/broker/page.jsx`, `app/admin/page.jsx` - Dashboard routes.
 - `src/App.jsx` - Shared React UI, dashboards, demo data, and local state.
 - `src/styles/app.css` - Global stylesheet entry for the full app.
 - `src/styles/landing.css` - Landing page styles imported by `app.css`.
