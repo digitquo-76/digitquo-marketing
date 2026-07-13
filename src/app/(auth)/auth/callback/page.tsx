@@ -14,14 +14,32 @@ function AuthCallback() {
   useEffect(() => {
     let mounted = true;
 
-    async function finishOAuth() {
-      const providerError = searchParams.get('error_description') || searchParams.get('error');
+    async function finishAuth() {
+      const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+      const hashParams = new URLSearchParams(hash);
+      const providerError =
+        searchParams.get('error_description') ||
+        searchParams.get('error') ||
+        hashParams.get('error_description') ||
+        hashParams.get('error');
+
       if (providerError) {
         setMessage(providerError);
         return;
       }
 
       try {
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          if (sessionError) throw sessionError;
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+
         const code = searchParams.get('code');
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -29,7 +47,7 @@ function AuthCallback() {
         }
 
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) throw userError || new Error('Google sign in did not return a user.');
+        if (userError || !user) throw userError || new Error('Sign in did not return a user.');
 
         const profile = await ensureUserProfile(user);
         if (mounted) router.replace(routeForProfile(profile));
@@ -40,7 +58,7 @@ function AuthCallback() {
       }
     }
 
-    finishOAuth();
+    finishAuth();
 
     return () => {
       mounted = false;

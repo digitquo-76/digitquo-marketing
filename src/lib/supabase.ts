@@ -79,7 +79,7 @@ const cookieStorage: SupportedStorage = {
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    flowType: 'pkce',
+    flowType: 'implicit',
     detectSessionInUrl: false,
     persistSession: true,
     storage: cookieStorage,

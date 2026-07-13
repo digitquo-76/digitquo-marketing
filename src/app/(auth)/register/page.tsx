@@ -63,6 +63,7 @@ function RegisterForm() {
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           full_name: displayName,
           role,
