@@ -5,14 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { Product } from '../../types';
+import { getMonthlyTrend, getProductPerformance } from '../../lib/analytics';
 import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
-import { ActivityList, EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
+import { AnalyticsBarChart, AnalyticsRanking } from './Analytics';
+import { EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
 import { ProductModal } from './Modals';
 import { ToastRegion } from '../ui/ToastRegion';
-import { ActivityIcon, EditIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, TrashIcon, UsersIcon } from '../ui/icons';
+import { ChartIcon, EditIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, TrashIcon, UsersIcon } from '../ui/icons';
 
-type SellerSection = 'overview' | 'products' | 'orders' | 'activity';
+type SellerSection = 'overview' | 'products' | 'orders' | 'analytics';
 
 export function SellerDashboardPage({ section }: { section: SellerSection }) {
   const store = useDigitQuoStore();
@@ -56,11 +58,21 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
       (stockFilter === 'out-of-stock' && product.stock <= 0);
     return matchesSearch && matchesCategory && matchesStock;
   });
-  const activity = store.activity.filter((item) => item.message.includes(currentSeller) || item.type === 'sale').slice(0, 12);
   const lowStockCount = myProducts.filter((product) => product.stock > 0 && product.stock <= 10).length;
   const inventoryCount = myProducts.reduce((sum, product) => sum + product.stock, 0);
   const salesValue = mySales.reduce((sum, sale) => sum + sale.total, 0);
+  const unitsSold = mySales.reduce((sum, sale) => sum + sale.quantity, 0);
+  const averageOrderValue = mySales.length ? salesValue / mySales.length : 0;
   const latestOrders = mySales.slice(0, 5);
+  const salesTrend = mySales.length ? getMonthlyTrend(mySales, (sale) => sale.total) : [];
+  const topProducts = getProductPerformance(mySales)
+    .sort((first, second) => second.orderValue - first.orderValue)
+    .slice(0, 5)
+    .map((product) => ({
+      label: product.label,
+      value: product.orderValue,
+      detail: `${product.units} ${product.units === 1 ? 'unit' : 'units'} · ${product.orders} ${product.orders === 1 ? 'order' : 'orders'}`
+    }));
 
   const openAddProduct = () => {
     setEditing(null);
@@ -113,7 +125,7 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
           ['/seller', 'Overview', <GridIcon key="grid" />],
           ['/seller/products', 'My products', <PackageIcon key="package" />],
           ['/seller/orders', 'Orders', <SaleIcon key="orders" />],
-          ['/seller/activity', 'Activity', <ActivityIcon key="activity" />],
+          ['/seller/analytics', 'Analytics', <ChartIcon size={18} key="analytics" />],
           ['/profile', 'My profile', <UsersIcon size={18} key="profile" />]
         ]}
         user={{ initials: currentSeller.slice(0,2).toUpperCase(), name: currentSeller, role: 'Seller account' }}
@@ -139,7 +151,7 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
             <section className="metrics-grid" aria-label="Store metrics">
               <Metric icon={<PackageIcon size={18} />} value={myProducts.length} label="Published products" />
               <Metric icon={<GridIcon />} value={inventoryCount} label="Units in inventory" />
-              <Metric icon={<ActivityIcon size={18} />} value={lowStockCount} label="Low-stock products" />
+              <Metric icon={<ChartIcon size={18} />} value={lowStockCount} label="Low-stock products" />
               <Metric icon={<SaleIcon size={18} />} value={mySales.length} label="Orders placed" />
             </section>
 
@@ -159,13 +171,17 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
               <aside className="dashboard-card">
                 <header className="dashboard-card-header">
                   <div>
-                    <h2 className="dashboard-card-title">Recent movement</h2>
-                    <p className="dashboard-card-subtitle">Latest product and order updates</p>
+                    <h2 className="dashboard-card-title">Sales performance</h2>
+                    <p className="dashboard-card-subtitle">Understand how your products are selling</p>
                   </div>
-                  <Link className="btn-dashboard btn-dashboard-secondary" href="/seller/activity">View activity</Link>
+                  <Link className="btn-dashboard btn-dashboard-secondary" href="/seller/analytics">View analytics</Link>
                 </header>
                 <div className="dashboard-card-body">
-                  <ActivityList items={activity.slice(0, 4)} />
+                  <p className="page-description">
+                    {mySales.length
+                      ? `${formatCurrency(salesValue)} in order value from ${mySales.length} ${mySales.length === 1 ? 'order' : 'orders'}.`
+                      : 'Sales trends and top-performing products will appear after your first order.'}
+                  </p>
                 </div>
               </aside>
               <article className="dashboard-card">
@@ -302,24 +318,58 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
           </>
         )}
 
-        {section === 'activity' && (
+        {section === 'analytics' && (
           <>
             <section className="page-heading">
               <div>
-                <p className="eyebrow">Store activity</p>
-                <h1 className="page-title">Follow every update.</h1>
-                <p className="page-description">Track product changes, broker orders, and the actions affecting your store.</p>
+                <p className="eyebrow">Sales analytics</p>
+                <h1 className="page-title">See what is driving your sales.</h1>
+                <p className="page-description">Review order value, units sold, and your best-performing products using data from this seller account.</p>
               </div>
             </section>
 
-            <section className="dashboard-card">
-              <header className="dashboard-card-header">
-                <div>
-                  <h2 className="dashboard-card-title">Recent activity</h2>
-                  <p className="dashboard-card-subtitle">Updates affecting your store</p>
+            <section className="metrics-grid" aria-label="Seller analytics summary">
+              <Metric icon={<SaleIcon size={18} />} value={mySales.length} label="Total orders" />
+              <Metric icon={<ChartIcon size={18} />} value={formatCurrency(salesValue)} label="Total order value" />
+              <Metric icon={<PackageIcon size={18} />} value={unitsSold} label="Units sold" />
+              <Metric icon={<GridIcon />} value={formatCurrency(averageOrderValue)} label="Average order value" />
+            </section>
+
+            <section className="analytics-layout">
+              <article className="dashboard-card">
+                <header className="dashboard-card-header">
+                  <div>
+                    <h2 className="dashboard-card-title">Order value trend</h2>
+                    <p className="dashboard-card-subtitle">Monthly performance over the last six months</p>
+                  </div>
+                </header>
+                <div className="dashboard-card-body">
+                  <AnalyticsBarChart
+                    points={salesTrend}
+                    valueFormatter={formatCurrency}
+                    ariaLabel="Seller order value by month for the last six months"
+                    emptyTitle="No recent sales data"
+                    emptyText="Completed orders will build your monthly sales trend here."
+                  />
                 </div>
-              </header>
-              <div className="dashboard-card-body"><ActivityList items={activity} /></div>
+              </article>
+
+              <article className="dashboard-card">
+                <header className="dashboard-card-header">
+                  <div>
+                    <h2 className="dashboard-card-title">Top products</h2>
+                    <p className="dashboard-card-subtitle">Ranked by total order value</p>
+                  </div>
+                </header>
+                <div className="dashboard-card-body">
+                  <AnalyticsRanking
+                    items={topProducts}
+                    valueFormatter={formatCurrency}
+                    emptyTitle="No product performance yet"
+                    emptyText="Your top products will appear after brokers place orders."
+                  />
+                </div>
+              </article>
             </section>
           </>
         )}

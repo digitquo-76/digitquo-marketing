@@ -8,7 +8,7 @@ import { useDigitQuoStore } from '../../lib/store';
 import { isProfileComplete, routeForProfile, routeForRole } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { ToastRegion } from '../ui/ToastRegion';
-import { ActivityIcon, BackIcon, GridIcon, PackageIcon, SaleIcon, UsersIcon, WalletIcon } from '../ui/icons';
+import { BackIcon, ChartIcon, GridIcon, PackageIcon, SaleIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
 function navForRole(role: string): [string, string, ReactNode][] {
   if (role === 'admin') {
@@ -27,6 +27,7 @@ function navForRole(role: string): [string, string, ReactNode][] {
       ['/broker', 'Overview', <GridIcon key="grid" />],
       ['/broker/catalog', 'Product catalog', <PackageIcon key="package" />],
       ['/broker/sales', 'My orders', <SaleIcon key="sale" />],
+      ['/broker/analytics', 'Analytics', <ChartIcon size={18} key="analytics" />],
       ['/broker/rewards', 'Rewards', <WalletIcon key="wallet" />],
       ['/profile', 'My profile', <UsersIcon size={18} key="profile" />]
     ];
@@ -36,7 +37,7 @@ function navForRole(role: string): [string, string, ReactNode][] {
     ['/seller', 'Overview', <GridIcon key="grid" />],
     ['/seller/products', 'My products', <PackageIcon key="package" />],
     ['/seller/orders', 'Orders', <SaleIcon key="orders" />],
-    ['/seller/activity', 'Activity', <ActivityIcon key="activity" />],
+    ['/seller/analytics', 'Analytics', <ChartIcon size={18} key="analytics" />],
     ['/profile', 'My profile', <UsersIcon size={18} key="profile" />]
   ];
 }

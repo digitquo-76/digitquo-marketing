@@ -6,14 +6,16 @@ import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { supabase } from '../../lib/supabase';
 import { Product } from '../../types';
+import { getMonthlyTrend, getProductPerformance } from '../../lib/analytics';
 import { formatCurrency, formatDate, getProductImages, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
+import { AnalyticsBarChart, AnalyticsRanking } from './Analytics';
 import { EmptyRow, Metric, ProductImage } from './Shared';
 import { OrderModal } from './Modals';
 import { ToastRegion } from '../ui/ToastRegion';
-import { GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon } from '../ui/icons';
+import { ChartIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
-type BrokerSection = 'overview' | 'catalog' | 'sales' | 'rewards' | 'product';
+type BrokerSection = 'overview' | 'catalog' | 'sales' | 'analytics' | 'rewards' | 'product';
 
 type RazorpayPaymentResponse = {
   razorpay_order_id: string;
@@ -86,6 +88,17 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
   const totalPointsEarned = sales.reduce((sum, sale) => sum + (sale.points || 0), 0);
   const pointsClaimed = brokerClaims.reduce((sum, claim) => sum + claim.points, 0);
   const availablePoints = totalPointsEarned - pointsClaimed;
+  const totalOrderValue = sales.reduce((sum, sale) => sum + sale.total, 0);
+  const averageCommission = sales.length ? totalPointsEarned / sales.length : 0;
+  const commissionTrend = sales.length ? getMonthlyTrend(sales, (sale) => sale.points || 0) : [];
+  const topProducts = getProductPerformance(sales)
+    .sort((first, second) => second.commission - first.commission)
+    .slice(0, 5)
+    .map((product) => ({
+      label: product.label,
+      value: product.commission,
+      detail: `${product.units} ${product.units === 1 ? 'unit' : 'units'} · ${formatCurrency(product.orderValue)} order value`
+    }));
   const payoutDetails = getPayoutDetails(store.profile);
   const hasPayoutDetails = Boolean(payoutDetails.accountName && (payoutDetails.upi || (payoutDetails.bankName && payoutDetails.accountNumber && payoutDetails.ifsc)));
 
@@ -228,6 +241,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
           ['/broker', 'Overview', <GridIcon key="grid" />],
           ['/broker/catalog', 'Product catalog', <SearchIcon size={18} key="search" />],
           ['/broker/sales', 'My orders', <SaleIcon key="sale" />],
+          ['/broker/analytics', 'Analytics', <ChartIcon size={18} key="analytics" />],
           ['/broker/rewards', 'Rewards', <WalletIcon key="wallet" />],
           ['/profile', 'My profile', <UsersIcon size={18} key="profile" />]
         ]}
@@ -252,7 +266,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
 
             <section className="metrics-grid" aria-label="Broker metrics">
               <Metric icon={<PackageIcon size={18} />} value={available.length} label="Products available" />
-              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(sales.reduce((sum, sale) => sum + sale.total, 0))} label="My order value" />
+              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(totalOrderValue)} label="My order value" />
               <Metric icon={<WalletIcon size={18} />} value={formatCurrency(availablePoints)} label="Available commission" />
               <Metric icon={<UsersIcon size={18} />} value={new Set(available.map((product) => product.seller)).size} label="Active sellers" />
             </section>
@@ -273,13 +287,17 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
               <aside className="dashboard-card">
                 <header className="dashboard-card-header">
                   <div>
-                    <h2 className="dashboard-card-title">Rewards workspace</h2>
-                    <p className="dashboard-card-subtitle">Claim your earned commission</p>
+                    <h2 className="dashboard-card-title">Performance snapshot</h2>
+                    <p className="dashboard-card-subtitle">Track orders and earned commission</p>
                   </div>
-                  <Link className="btn-dashboard btn-dashboard-secondary" href="/broker/rewards">View rewards</Link>
+                  <Link className="btn-dashboard btn-dashboard-secondary" href="/broker/analytics">View analytics</Link>
                 </header>
                 <div className="dashboard-card-body">
-                  <p className="page-description">You have {formatCurrency(availablePoints)} commission ready to claim.</p>
+                  <p className="page-description">
+                    {sales.length
+                      ? `${formatCurrency(totalPointsEarned)} earned from ${sales.length} ${sales.length === 1 ? 'order' : 'orders'}.`
+                      : 'Order trends and product performance will appear after your first order.'}
+                  </p>
                 </div>
               </aside>
             </section>
@@ -379,6 +397,62 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                   </tbody>
                 </table>
               </div>
+            </section>
+          </>
+        )}
+
+        {section === 'analytics' && (
+          <>
+            <section className="page-heading">
+              <div>
+                <p className="eyebrow">Broker analytics</p>
+                <h1 className="page-title">Know what is earning for you.</h1>
+                <p className="page-description">Follow order value and commission performance using orders placed from this broker account.</p>
+              </div>
+            </section>
+
+            <section className="metrics-grid" aria-label="Broker analytics summary">
+              <Metric icon={<SaleIcon size={18} />} value={sales.length} label="Total orders" />
+              <Metric icon={<ChartIcon size={18} />} value={formatCurrency(totalOrderValue)} label="Total order value" />
+              <Metric icon={<WalletIcon size={18} />} value={formatCurrency(totalPointsEarned)} label="Commission earned" />
+              <Metric icon={<GridIcon />} value={formatCurrency(averageCommission)} label="Average commission per order" />
+            </section>
+
+            <section className="analytics-layout">
+              <article className="dashboard-card">
+                <header className="dashboard-card-header">
+                  <div>
+                    <h2 className="dashboard-card-title">Commission trend</h2>
+                    <p className="dashboard-card-subtitle">Monthly earnings over the last six months</p>
+                  </div>
+                </header>
+                <div className="dashboard-card-body">
+                  <AnalyticsBarChart
+                    points={commissionTrend}
+                    valueFormatter={formatCurrency}
+                    ariaLabel="Broker commission earned by month for the last six months"
+                    emptyTitle="No recent commission data"
+                    emptyText="Commission from completed orders will build your monthly trend here."
+                  />
+                </div>
+              </article>
+
+              <article className="dashboard-card">
+                <header className="dashboard-card-header">
+                  <div>
+                    <h2 className="dashboard-card-title">Top products</h2>
+                    <p className="dashboard-card-subtitle">Ranked by commission earned</p>
+                  </div>
+                </header>
+                <div className="dashboard-card-body">
+                  <AnalyticsRanking
+                    items={topProducts}
+                    valueFormatter={formatCurrency}
+                    emptyTitle="No product performance yet"
+                    emptyText="Products earning you commission will appear after your first order."
+                  />
+                </div>
+              </article>
             </section>
           </>
         )}

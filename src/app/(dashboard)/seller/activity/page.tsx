@@ -1,5 +1,5 @@
-import { SellerDashboardPage } from '../../../../components/dashboard/SellerDashboardPage';
+import { redirect } from 'next/navigation';
 
 export default function SellerActivityPage() {
-  return <SellerDashboardPage section="activity" />;
+  redirect('/seller/analytics');
 }
