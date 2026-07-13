@@ -127,7 +127,7 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
   );
 }
 
-export function OrderModal({ product, onClose, onSave }: any) {
+export function OrderModal({ product, onClose, onSave, submitting = false }: any) {
   const [quantity, setQuantity] = useState(1);
   const [customer, setCustomer] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -146,11 +146,11 @@ export function OrderModal({ product, onClose, onSave }: any) {
   if (!product) return null;
 
   return (
-    <div className="modal-backdrop open" aria-hidden="false" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <form className="modal" onSubmit={(event) => { event.preventDefault(); onSave({ productId: product.id, customer: customer.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim(), orderNotes: orderNotes.trim(), quantity: Number(quantity) }); }}>
+    <div className="modal-backdrop open" aria-hidden="false" onClick={(event) => { if (!submitting && event.target === event.currentTarget) onClose(); }}>
+      <form className="modal" onSubmit={(event) => { event.preventDefault(); if (!submitting) onSave({ productId: product.id, customer: customer.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim(), orderNotes: orderNotes.trim(), quantity: Number(quantity) }); }}>
         <header className="modal-header">
           <h2 className="modal-title">Place order</h2>
-          <button className="modal-close" type="button" onClick={onClose} aria-label="Close">x</button>
+          <button className="modal-close" type="button" onClick={onClose} aria-label="Close" disabled={submitting}>x</button>
         </header>
         <div className="modal-body">
           <div className="form-grid">
@@ -190,8 +190,8 @@ export function OrderModal({ product, onClose, onSave }: any) {
           </div>
         </div>
         <footer className="modal-footer">
-          <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onClose}>Cancel</button>
-          <button className="btn-dashboard btn-dashboard-primary" type="submit">Place order</button>
+          <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onClose} disabled={submitting}>Cancel</button>
+          <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={submitting}>{submitting ? 'Processing payment...' : `Pay ${formatCurrency(product.price * Number(quantity || 1))}`}</button>
         </footer>
       </form>
     </div>

@@ -27,6 +27,17 @@ type PlaceOrderInput = {
   quantity: number;
 };
 
+type RazorpayPaymentResult = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type CompletePaidOrderInput = {
+  order: PlaceOrderInput;
+  payment: RazorpayPaymentResult;
+};
+
 export function useDigitQuoStore() {
   const router = useRouter();
   const [products, setProductsState] = useState<Product[]>([]);
@@ -197,6 +208,35 @@ export function useDigitQuoStore() {
     return newSale;
   };
 
+  const completePaidOrder = async ({ order, payment }: CompletePaidOrderInput) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
+    if (!accessToken) {
+      throw new Error('You need to be signed in to complete payment.');
+    }
+
+    const response = await fetch('/api/payments/verify-and-place-order', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ order, payment })
+    });
+
+    const result = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(result?.error || 'Payment succeeded, but the order could not be completed.');
+    }
+
+    const newSale = mapSaleFromDB(result.sale);
+    setSalesState(prev => [newSale, ...prev]);
+    setProductsState(prev => prev.map((product) => product.id === newSale.productId ? { ...product, stock: Math.max(0, product.stock - newSale.quantity) } : product));
+
+    return newSale;
+  };
+
   const addClaim = async (claim: Omit<Claim, 'id' | 'createdAt' | 'status'>) => {
     const newClaim = {
       id: `claim_${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -265,7 +305,7 @@ export function useDigitQuoStore() {
     user, profile, loading,
     currentSellerName, currentBrokerName,
     addProduct, updateProduct, deleteProduct,
-    addSale, placeOrder, addClaim, updateClaimStatus, addActivity, updateProfile,
+    addSale, placeOrder, completePaidOrder, addClaim, updateClaimStatus, addActivity, updateProfile,
     showToast, logout
   };
 }

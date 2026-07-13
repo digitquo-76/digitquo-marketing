@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
+import { supabase } from '../../lib/supabase';
 import { Product } from '../../types';
 import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
@@ -14,12 +15,44 @@ import { GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon, Sta
 
 type BrokerSection = 'overview' | 'catalog' | 'sales' | 'rewards' | 'product';
 
+type RazorpayPaymentResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayCheckoutOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill?: {
+    name?: string;
+    contact?: string;
+    email?: string;
+  };
+  notes?: Record<string, string>;
+  handler: (response: RazorpayPaymentResponse) => void;
+  modal?: {
+    ondismiss?: () => void;
+  };
+};
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayCheckoutOptions) => { open: () => void };
+  }
+}
+
 export function BrokerDashboardPage({ section, productId }: { section: BrokerSection; productId?: string }) {
   const store = useDigitQuoStore();
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [orderProduct, setOrderProduct] = useState<Product | null>(null);
+  const [isPaying, setIsPaying] = useState(false);
 
   useEffect(() => {
     if (store.loading) return;
@@ -74,25 +107,66 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
     }
     
     try {
-      const order = await store.placeOrder({
+      setIsPaying(true);
+      const orderDetails = {
         productId: product.id,
         customer,
         customerPhone,
         customerAddress,
         orderNotes,
         quantity: Number(quantity)
+      };
+      const checkoutOrder = await createRazorpayOrder(product.id, Number(quantity));
+      await loadRazorpayCheckout();
+
+      if (!window.Razorpay) {
+        throw new Error('Razorpay checkout could not be loaded.');
+      }
+
+      const payment = await new Promise<RazorpayPaymentResponse>((resolve, reject) => {
+        const Razorpay = window.Razorpay;
+        if (!Razorpay) {
+          reject(new Error('Razorpay checkout could not be loaded.'));
+          return;
+        }
+        const razorpay = new Razorpay({
+          key: checkoutOrder.keyId,
+          amount: checkoutOrder.amount,
+          currency: checkoutOrder.currency,
+          name: 'DigitQuo',
+          description: `${product.name} x ${quantity}`,
+          order_id: checkoutOrder.orderId,
+          prefill: {
+            name: customer,
+            contact: customerPhone,
+            email: store.profile?.email || undefined
+          },
+          notes: {
+            product_id: product.id,
+            customer
+          },
+          handler: resolve,
+          modal: {
+            ondismiss: () => reject(new Error('Payment was cancelled.'))
+          }
+        });
+        razorpay.open();
       });
 
+      const order = await store.completePaidOrder({ order: orderDetails, payment });
+
       try {
-        await store.addActivity('sale', `${currentBroker} placed an order for ${quantity} x ${product.name} for ${customer} (${formatCurrency(order.total)}).`);
+        await store.addActivity('sale', `${currentBroker} paid and placed an order for ${quantity} x ${product.name} for ${customer} (${formatCurrency(order.total)}).`);
       } catch {
         // The order is already saved; activity is secondary.
       }
       
       setOrderProduct(null);
-      store.showToast(`Order placed: ${formatCurrency(order.total)}. You earned ${order.points} pts.`, 'success');
+      store.showToast(`Payment successful. Invoice sent to broker: ${formatCurrency(order.total)}. You earned ${order.points} pts.`, 'success');
     } catch (error) {
-      store.showToast(error instanceof Error ? error.message : 'Could not place order.', 'error');
+      store.showToast(error instanceof Error ? error.message : 'Could not complete payment.', 'error');
+    } finally {
+      setIsPaying(false);
     }
   };
 
@@ -417,8 +491,53 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
           )
         )}
       </DashboardShell>
-      <OrderModal product={orderProduct} onClose={() => setOrderProduct(null)} onSave={placeOrder} />
+      <OrderModal product={orderProduct} onClose={() => setOrderProduct(null)} onSave={placeOrder} submitting={isPaying} />
       <ToastRegion toasts={store.toasts} />
     </>
   );
+}
+
+async function createRazorpayOrder(productId: string, quantity: number) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+
+  if (!accessToken) {
+    throw new Error('You need to be signed in before payment.');
+  }
+
+  const response = await fetch('/api/payments/create-order', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ productId, quantity })
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error || 'Could not start Razorpay payment.');
+  }
+
+  return data as { keyId: string; orderId: string; amount: number; currency: string; productName: string };
+}
+
+function loadRazorpayCheckout() {
+  if (window.Razorpay) return Promise.resolve();
+
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Could not load Razorpay checkout.')), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Could not load Razorpay checkout.'));
+    document.body.appendChild(script);
+  });
 }
