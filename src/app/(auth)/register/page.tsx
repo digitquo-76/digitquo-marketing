@@ -4,8 +4,9 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRightIcon, HomeIcon, UsersIcon } from '../../../components/ui/icons';
-import { routeForRole } from '../../../lib/utils';
+import { routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
+import { ensureUserProfile } from '../../../lib/profile';
 
 function RegisterForm() {
   const router = useRouter();
@@ -19,6 +20,7 @@ function RegisterForm() {
   const [businessType, setBusinessType] = useState('retail');
   const [market, setMarket] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -29,6 +31,7 @@ function RegisterForm() {
   const continueToDetails = (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
+    setNotice('');
 
     if (!name.trim() || !email.trim() || password.length < 8) {
       setError('Enter your name, email, and a password with at least 8 characters.');
@@ -41,6 +44,7 @@ function RegisterForm() {
   const handleRegister = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
+    setNotice('');
 
     if (role === 'seller' && !businessName.trim()) {
       setError('Enter your business name to create a seller profile.');
@@ -75,15 +79,28 @@ function RegisterForm() {
       return;
     }
 
-    router.push(routeForRole(role));
+    if (!data.session) {
+      setSubmitting(false);
+      setNotice('Account created. Check your email to confirm your account, then sign in.');
+      return;
+    }
+
+    try {
+      const profile = await ensureUserProfile(data.user);
+      router.push(routeForProfile(profile));
+    } catch (profileError) {
+      setSubmitting(false);
+      setError(profileError instanceof Error ? profileError.message : 'Could not prepare your account profile.');
+    }
   };
 
   const handleGoogleSignup = async () => {
     setError('');
+    setNotice('');
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (authError) setError(authError.message);
@@ -132,6 +149,7 @@ function RegisterForm() {
 
           <form onSubmit={step === 'account' ? continueToDetails : handleRegister} className="auth-form">
             {error && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
+            {notice && <div className="auth-alert" role="status">{notice}</div>}
 
             {step === 'account' && (
               <>
