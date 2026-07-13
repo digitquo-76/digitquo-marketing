@@ -643,6 +643,35 @@ a {
   font-size: 0.66rem;
 }
 
+.mini-list {
+  display: grid;
+  gap: 10px;
+}
+
+.mini-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 10px;
+  color: var(--dashboard-text);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  border-bottom: 1px solid #f0ebf5;
+}
+
+.mini-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.mini-row span:last-child {
+  flex: 0 0 auto;
+  color: var(--dashboard-purple);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .catalog-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

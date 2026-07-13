@@ -17,6 +17,9 @@ export interface Sale {
   productName: string;
   seller: string;
   customer: string;
+  customerPhone: string;
+  customerAddress: string;
+  orderNotes: string;
   quantity: number;
   unitPrice: number;
   total: number;

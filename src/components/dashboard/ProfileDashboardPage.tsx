@@ -26,7 +26,7 @@ function navForRole(role: string): [string, string, ReactNode][] {
     return [
       ['/broker', 'Overview', <GridIcon key="grid" />],
       ['/broker/catalog', 'Product catalog', <PackageIcon key="package" />],
-      ['/broker/sales', 'My sales', <SaleIcon key="sale" />],
+      ['/broker/sales', 'My orders', <SaleIcon key="sale" />],
       ['/broker/rewards', 'Rewards', <WalletIcon key="wallet" />],
       ['/profile', 'My profile', <UsersIcon size={18} key="profile" />]
     ];
@@ -35,6 +35,7 @@ function navForRole(role: string): [string, string, ReactNode][] {
   return [
     ['/seller', 'Overview', <GridIcon key="grid" />],
     ['/seller/products', 'My products', <PackageIcon key="package" />],
+    ['/seller/orders', 'Orders', <SaleIcon key="orders" />],
     ['/seller/activity', 'Activity', <ActivityIcon key="activity" />],
     ['/profile', 'My profile', <UsersIcon size={18} key="profile" />]
   ];

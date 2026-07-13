@@ -18,6 +18,15 @@ type Profile = {
   onboarding_complete?: boolean | null;
 };
 
+type PlaceOrderInput = {
+  productId: string;
+  customer: string;
+  customerPhone: string;
+  customerAddress: string;
+  orderNotes: string;
+  quantity: number;
+};
+
 export function useDigitQuoStore() {
   const router = useRouter();
   const [products, setProductsState] = useState<Product[]>([]);
@@ -151,6 +160,25 @@ export function useDigitQuoStore() {
     }
   };
 
+  const placeOrder = async (order: PlaceOrderInput) => {
+    const { data, error } = await supabase.rpc('place_order', {
+      p_order_id: `ord_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      p_product_id: order.productId,
+      p_customer: order.customer,
+      p_customer_phone: order.customerPhone,
+      p_customer_address: order.customerAddress,
+      p_order_notes: order.orderNotes,
+      p_quantity: order.quantity
+    });
+
+    if (error) throw error;
+
+    const newSale = mapSaleFromDB(data);
+    setSalesState(prev => [newSale, ...prev]);
+    setProductsState(prev => prev.map((product) => product.id === newSale.productId ? { ...product, stock: Math.max(0, product.stock - newSale.quantity) } : product));
+    return newSale;
+  };
+
   const addClaim = async (claim: Omit<Claim, 'id' | 'createdAt' | 'status'>) => {
     const newClaim = {
       id: `claim_${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -219,7 +247,7 @@ export function useDigitQuoStore() {
     user, profile, loading,
     currentSellerName, currentBrokerName,
     addProduct, updateProduct, deleteProduct,
-    addSale, addClaim, updateClaimStatus, addActivity, updateProfile,
+    addSale, placeOrder, addClaim, updateClaimStatus, addActivity, updateProfile,
     showToast, logout
   };
 }
@@ -233,10 +261,40 @@ function mapProductFromDB(p: any): Product {
 }
 
 function mapSaleToDB(s: Sale) {
-  return { id: s.id, product_id: s.productId, product_name: s.productName, seller: s.seller, customer: s.customer, quantity: s.quantity, unit_price: s.unitPrice, total: s.total, points: s.points, broker: s.broker, created_at: s.createdAt };
+  return {
+    id: s.id,
+    product_id: s.productId,
+    product_name: s.productName,
+    seller: s.seller,
+    customer: s.customer,
+    customer_phone: s.customerPhone,
+    customer_address: s.customerAddress,
+    order_notes: s.orderNotes,
+    quantity: s.quantity,
+    unit_price: s.unitPrice,
+    total: s.total,
+    points: s.points,
+    broker: s.broker,
+    created_at: s.createdAt
+  };
 }
 function mapSaleFromDB(s: any): Sale {
-  return { id: s.id, productId: s.product_id, productName: s.product_name, seller: s.seller, customer: s.customer, quantity: s.quantity, unitPrice: s.unit_price, total: s.total, points: s.points, broker: s.broker, createdAt: s.created_at };
+  return {
+    id: s.id,
+    productId: s.product_id,
+    productName: s.product_name,
+    seller: s.seller,
+    customer: s.customer,
+    customerPhone: s.customer_phone || '',
+    customerAddress: s.customer_address || '',
+    orderNotes: s.order_notes || '',
+    quantity: s.quantity,
+    unitPrice: s.unit_price,
+    total: s.total,
+    points: s.points,
+    broker: s.broker,
+    createdAt: s.created_at
+  };
 }
 
 function mapClaimToDB(c: Claim) {

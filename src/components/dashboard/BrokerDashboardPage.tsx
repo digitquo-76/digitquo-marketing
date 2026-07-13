@@ -8,7 +8,7 @@ import { Product } from '../../types';
 import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { EmptyRow, Metric, ProductImage } from './Shared';
-import { SaleModal } from './Modals';
+import { OrderModal } from './Modals';
 import { ToastRegion } from '../ui/ToastRegion';
 import { GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon, StarIcon } from '../ui/icons';
 
@@ -19,7 +19,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
-  const [saleProduct, setSaleProduct] = useState<Product | null>(null);
+  const [orderProduct, setOrderProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     if (store.loading) return;
@@ -66,41 +66,33 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
     { id: 3, author: 'Sarah W.', rating: 5, date: '2 weeks ago', content: 'Exceeded my expectations. Will definitely be buying more from this seller in the future!' }
   ];
 
-  const recordSale = async ({ productId, customer, quantity }: any) => {
+  const placeOrder = async ({ productId, customer, customerPhone, customerAddress, orderNotes, quantity }: any) => {
     const product = store.products.find((p) => p.id === productId);
-    if (!product || !customer || quantity < 1 || quantity > product.stock) {
-      store.showToast('Enter a customer and a valid quantity.', 'error');
+    if (!product || !customer || !customerPhone || !customerAddress || quantity < 1 || quantity > product.stock) {
+      store.showToast('Enter customer details and a valid quantity.', 'error');
       return;
     }
     
-    const total = Number(product.price) * Number(quantity);
-    const points = Math.max(0, (Number(product.mrp ?? product.price) - Number(product.price)) * Number(quantity));
-
     try {
-      await store.updateProduct({ ...product, stock: product.stock - quantity });
-      try {
-        await store.addSale({
-          productId: product.id,
-          productName: product.name,
-          seller: product.seller,
-          customer,
-          quantity: Number(quantity),
-          unitPrice: Number(product.price),
-          total,
-          points,
-          broker: currentBroker
-        });
-      } catch (error) {
-        await store.updateProduct(product);
-        throw error;
-      }
+      const order = await store.placeOrder({
+        productId: product.id,
+        customer,
+        customerPhone,
+        customerAddress,
+        orderNotes,
+        quantity: Number(quantity)
+      });
 
-      await store.addActivity('sale', `${currentBroker} sold ${quantity} x ${product.name} to ${customer} for ${formatCurrency(total)}.`);
+      try {
+        await store.addActivity('sale', `${currentBroker} placed an order for ${quantity} x ${product.name} for ${customer} (${formatCurrency(order.total)}).`);
+      } catch {
+        // The order is already saved; activity is secondary.
+      }
       
-      setSaleProduct(null);
-      store.showToast(`Sale recorded: ${formatCurrency(total)}. You earned ${points} pts.`, 'success');
+      setOrderProduct(null);
+      store.showToast(`Order placed: ${formatCurrency(order.total)}. You earned ${order.points} pts.`, 'success');
     } catch (error) {
-      store.showToast(error instanceof Error ? error.message : 'Could not record sale.', 'error');
+      store.showToast(error instanceof Error ? error.message : 'Could not place order.', 'error');
     }
   };
 
@@ -121,7 +113,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
         nav={[
           ['/broker', 'Overview', <GridIcon key="grid" />],
           ['/broker/catalog', 'Product catalog', <SearchIcon size={18} key="search" />],
-          ['/broker/sales', 'My sales', <SaleIcon key="sale" />],
+          ['/broker/sales', 'My orders', <SaleIcon key="sale" />],
           ['/broker/rewards', 'Rewards', <WalletIcon key="wallet" />],
           ['/profile', 'My profile', <UsersIcon size={18} key="profile" />]
         ]}
@@ -129,7 +121,6 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
         title="Broker workspace"
         actions={(
           <div className="topbar-actions">
-            <Link className="btn-dashboard btn-dashboard-secondary" href="/">View website</Link>
             <button className="btn-dashboard btn-dashboard-primary" type="button" onClick={store.logout}>Sign out</button>
           </div>
         )}
@@ -139,15 +130,15 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
             <section className="page-heading">
               <div>
                 <p className="eyebrow">Broker overview</p>
-                <h1 className="page-title">Find products. Make the sale.</h1>
-                <p className="page-description">Browse live inventory from every seller, choose the right products for your customers, and record each completed sale.</p>
+                <h1 className="page-title">Find products. Place the order.</h1>
+                <p className="page-description">Browse live inventory from every seller, choose the right products for your customers, and place orders with customer details.</p>
               </div>
               <Link className="btn-dashboard btn-dashboard-primary" href="/broker/catalog">Browse all products</Link>
             </section>
 
             <section className="metrics-grid" aria-label="Broker metrics">
               <Metric icon={<PackageIcon size={18} />} value={available.length} label="Products available" />
-              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(sales.reduce((sum, sale) => sum + sale.total, 0))} label="My recorded sales" />
+              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(sales.reduce((sum, sale) => sum + sale.total, 0))} label="My order value" />
               <Metric icon={<WalletIcon size={18} />} value={availablePoints} label="Available points" />
               <Metric icon={<UsersIcon size={18} />} value={new Set(available.map((product) => product.seller)).size} label="Active sellers" />
             </section>
@@ -157,7 +148,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                 <header className="dashboard-card-header">
                   <div>
                     <h2 className="dashboard-card-title">Catalog workspace</h2>
-                    <p className="dashboard-card-subtitle">Search live inventory and record customer sales</p>
+                    <p className="dashboard-card-subtitle">Search live inventory and place customer orders</p>
                   </div>
                   <Link className="btn-dashboard btn-dashboard-secondary" href="/broker/catalog">Open catalog</Link>
                 </header>
@@ -187,7 +178,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
               <div>
                 <p className="eyebrow">Product catalog</p>
                 <h1 className="page-title">Browse seller inventory.</h1>
-                <p className="page-description">Search available products, filter by category, and record a customer sale from any catalog card.</p>
+                <p className="page-description">Search available products, filter by category, and place an order from any catalog card.</p>
               </div>
             </section>
 
@@ -195,7 +186,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
               <header className="dashboard-card-header">
                 <div>
                   <h2 className="dashboard-card-title">Seller product catalog</h2>
-                  <p className="dashboard-card-subtitle">Live products available for customer sales</p>
+                  <p className="dashboard-card-subtitle">Live products available for customer orders</p>
                 </div>
                 <div className="toolbar">
                   <label className="search-wrap">
@@ -227,7 +218,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                           </span>
                           <span className="catalog-stock">{product.stock} available</span>
                         </div>
-                        <button className="btn-dashboard btn-dashboard-primary" type="button" onClick={() => setSaleProduct(product)}>Record customer sale</button>
+                        <button className="btn-dashboard btn-dashboard-primary" type="button" onClick={() => setOrderProduct(product)}>Place order</button>
                       </div>
                     </article>
                   )) : <div className="empty-state"><strong>No matching products</strong><p>Try another search or category.</p></div>}
@@ -241,34 +232,36 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
           <>
             <section className="page-heading">
               <div>
-                <p className="eyebrow">Broker sales</p>
-                <h1 className="page-title">My customer sales.</h1>
-                <p className="page-description">Review transactions recorded from this broker account.</p>
+                <p className="eyebrow">Broker orders</p>
+                <h1 className="page-title">My customer orders.</h1>
+                <p className="page-description">Review orders placed from this broker account.</p>
               </div>
-              <Link className="btn-dashboard btn-dashboard-primary" href="/broker/catalog">Record another sale</Link>
+              <Link className="btn-dashboard btn-dashboard-primary" href="/broker/catalog">Place another order</Link>
             </section>
 
             <section className="dashboard-card">
               <header className="dashboard-card-header">
                 <div>
-                  <h2 className="dashboard-card-title">My recent customer sales</h2>
-                  <p className="dashboard-card-subtitle">Transactions recorded from this broker account</p>
+                  <h2 className="dashboard-card-title">My recent customer orders</h2>
+                  <p className="dashboard-card-subtitle">Orders placed from this broker account</p>
                 </div>
               </header>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Product</th><th>Customer</th><th>Quantity</th><th>Total</th><th>Points</th><th>Date</th></tr></thead>
+                  <thead><tr><th>Product</th><th>Customer</th><th>Phone</th><th>Address</th><th>Quantity</th><th>Total</th><th>Points</th><th>Date</th></tr></thead>
                   <tbody>
                     {sales.length ? sales.map((sale) => (
                       <tr key={sale.id}>
                         <td><span className="cell-title">{sale.productName}</span><br /><span className="cell-meta">{sale.seller}</span></td>
                         <td>{sale.customer}</td>
+                        <td>{sale.customerPhone || 'Not added'}</td>
+                        <td>{sale.customerAddress || 'Not added'}</td>
                         <td>{sale.quantity}</td>
                         <td>{formatCurrency(sale.total)}</td>
                         <td>+{sale.points}</td>
                         <td>{formatDate(sale.createdAt)}</td>
                       </tr>
-                    )) : <EmptyRow colSpan={6} title="No sales recorded yet" text="Open the catalog to record your first sale." />}
+                    )) : <EmptyRow colSpan={8} title="No orders placed yet" text="Open the catalog to place your first order." />}
                   </tbody>
                 </table>
               </div>
@@ -282,7 +275,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
               <div>
                 <p className="eyebrow">Rewards</p>
                 <h1 className="page-title">Claim your commission.</h1>
-                <p className="page-description">Redeem the points you've earned from broker sales. Payouts are processed in real money within 24 hours.</p>
+                <p className="page-description">Redeem the points you've earned from broker orders. Payouts are processed in real money within 24 hours.</p>
               </div>
               {availablePoints > 0 && <button className="btn-dashboard btn-dashboard-primary" type="button" onClick={claimPoints}>Claim {availablePoints} pts for cash</button>}
             </section>
@@ -314,7 +307,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                         </td>
                         <td>{formatDate(claim.createdAt)}</td>
                       </tr>
-                    )) : <EmptyRow colSpan={4} title="No claims requested" text="Make sales to earn points and claim rewards." />}
+                    )) : <EmptyRow colSpan={4} title="No claims requested" text="Place orders to earn points and claim rewards." />}
                   </tbody>
                 </table>
               </div>
@@ -361,7 +354,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                     <p className="page-description" style={{ margin: 0, fontSize: '0.95rem' }}>{activeProduct.description || 'Premium quality product available for immediate dispatch. Comes with standard manufacturer warranty where applicable.'}</p>
                   </div>
 
-                  <button className="btn-dashboard btn-dashboard-primary" type="button" style={{ width: '100%', maxWidth: '300px', height: '48px', fontSize: '1rem' }} onClick={() => setSaleProduct(activeProduct)}>Record customer sale</button>
+                  <button className="btn-dashboard btn-dashboard-primary" type="button" style={{ width: '100%', maxWidth: '300px', height: '48px', fontSize: '1rem' }} onClick={() => setOrderProduct(activeProduct)}>Place order</button>
                 </div>
               </div>
 
@@ -424,7 +417,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
           )
         )}
       </DashboardShell>
-      <SaleModal product={saleProduct} onClose={() => setSaleProduct(null)} onSave={recordSale} />
+      <OrderModal product={orderProduct} onClose={() => setOrderProduct(null)} onSave={placeOrder} />
       <ToastRegion toasts={store.toasts} />
     </>
   );

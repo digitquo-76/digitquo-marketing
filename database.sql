@@ -37,6 +37,9 @@ create table if not exists public.sales (
   product_name text not null,
   seller text not null,
   customer text not null check (char_length(customer) between 1 and 120),
+  customer_phone text not null default '',
+  customer_address text not null default '',
+  order_notes text not null default '',
   quantity integer not null check (quantity > 0),
   unit_price numeric(12, 2) not null check (unit_price > 0),
   total numeric(12, 2) not null check (total >= 0),
@@ -44,6 +47,10 @@ create table if not exists public.sales (
   broker text not null,
   created_at timestamptz not null default timezone('utc'::text, now())
 );
+
+alter table public.sales add column if not exists customer_phone text not null default '';
+alter table public.sales add column if not exists customer_address text not null default '';
+alter table public.sales add column if not exists order_notes text not null default '';
 
 create table if not exists public.claims (
   id text primary key,
@@ -101,6 +108,112 @@ set search_path = public
 as $$
   select coalesce(onboarding_complete, false) from public.profiles where id = auth.uid()
 $$;
+
+create or replace function public.place_order(
+  p_order_id text,
+  p_product_id text,
+  p_customer text,
+  p_customer_phone text,
+  p_customer_address text,
+  p_order_notes text,
+  p_quantity integer
+)
+returns public.sales
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_product public.products%rowtype;
+  v_order public.sales%rowtype;
+  v_broker text;
+  v_total numeric(12, 2);
+  v_points numeric(12, 2);
+begin
+  if auth.uid() is null then
+    raise exception 'You must be signed in to place an order.';
+  end if;
+
+  if coalesce(public.current_profile_role(), '') <> 'broker' or coalesce(public.current_profile_onboarded(), false) = false then
+    raise exception 'Only onboarded brokers can place orders.';
+  end if;
+
+  if p_quantity is null or p_quantity < 1 then
+    raise exception 'Enter a valid order quantity.';
+  end if;
+
+  if char_length(btrim(coalesce(p_customer, ''))) < 1 then
+    raise exception 'Customer name is required.';
+  end if;
+
+  if char_length(btrim(coalesce(p_customer_phone, ''))) < 1 then
+    raise exception 'Customer phone is required.';
+  end if;
+
+  if char_length(btrim(coalesce(p_customer_address, ''))) < 1 then
+    raise exception 'Customer address is required.';
+  end if;
+
+  select *
+    into v_product
+    from public.products
+    where id = p_product_id
+    for update;
+
+  if not found then
+    raise exception 'Product not found.';
+  end if;
+
+  if v_product.stock < p_quantity then
+    raise exception 'Only % units are available.', v_product.stock;
+  end if;
+
+  v_broker := public.current_profile_name();
+  v_total := v_product.price * p_quantity;
+  v_points := greatest(0, (v_product.mrp - v_product.price) * p_quantity);
+
+  update public.products
+    set stock = stock - p_quantity
+    where id = v_product.id;
+
+  insert into public.sales (
+    id,
+    product_id,
+    product_name,
+    seller,
+    customer,
+    customer_phone,
+    customer_address,
+    order_notes,
+    quantity,
+    unit_price,
+    total,
+    points,
+    broker
+  )
+  values (
+    p_order_id,
+    v_product.id,
+    v_product.name,
+    v_product.seller,
+    btrim(p_customer),
+    btrim(p_customer_phone),
+    btrim(p_customer_address),
+    btrim(coalesce(p_order_notes, '')),
+    p_quantity,
+    v_product.price,
+    v_total,
+    v_points,
+    v_broker
+  )
+  returning * into v_order;
+
+  return v_order;
+end;
+$$;
+
+revoke all on function public.place_order(text, text, text, text, text, text, integer) from public;
+grant execute on function public.place_order(text, text, text, text, text, text, integer) to authenticated;
 
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();

@@ -74,7 +74,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
               <div>
                 <p className="eyebrow">Platform command centre</p>
                 <h1 className="page-title">Every activity, organized by page.</h1>
-                <p className="page-description">Monitor seller listings, broker transactions, inventory movement, and platform payouts from dedicated admin sections.</p>
+                <p className="page-description">Monitor seller listings, broker orders, inventory movement, and platform payouts from dedicated admin sections.</p>
               </div>
             </section>
 
@@ -86,7 +86,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
             <section className="metrics-grid" aria-label="Platform metrics">
               <Metric icon={<UsersIcon size={18} />} value={sellers.size + brokers.size} label="Active platform accounts" />
               <Metric icon={<PackageIcon size={18} />} value={store.products.length} label="Product listings" />
-              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(grossSales)} label="Gross sales volume" />
+              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(grossSales)} label="Gross order value" />
               <Metric icon={<WalletIcon size={18} />} value={pendingClaimsCount} label="Pending payouts" />
             </section>
 
@@ -125,7 +125,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
               <div>
                 <p className="eyebrow">All activity</p>
                 <h1 className="page-title">Live activity trail.</h1>
-                <p className="page-description">See product and transaction events from across the marketplace.</p>
+                <p className="page-description">See product and order events from across the marketplace.</p>
               </div>
             </section>
 
@@ -133,7 +133,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
               <header className="dashboard-card-header">
                 <div>
                   <h2 className="dashboard-card-title">Live activity trail</h2>
-                  <p className="dashboard-card-subtitle">Product and transaction events</p>
+                  <p className="dashboard-card-subtitle">Product and order events</p>
                 </div>
               </header>
               <div className="dashboard-card-body"><ActivityList items={store.activity.slice(0, 50)} /></div>
@@ -185,32 +185,34 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
             <section className="page-heading">
               <div>
                 <p className="eyebrow">Transactions</p>
-                <h1 className="page-title">Broker transaction log.</h1>
-                <p className="page-description">Audit customer sales recorded by brokers across the marketplace.</p>
+                <h1 className="page-title">Broker order log.</h1>
+                <p className="page-description">Audit customer orders placed by brokers across the marketplace.</p>
               </div>
             </section>
 
             <section className="dashboard-card">
               <header className="dashboard-card-header">
                 <div>
-                  <h2 className="dashboard-card-title">All broker transactions</h2>
-                  <p className="dashboard-card-subtitle">Complete customer sales visibility</p>
+                  <h2 className="dashboard-card-title">All broker orders</h2>
+                  <p className="dashboard-card-subtitle">Complete customer order visibility</p>
                 </div>
               </header>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Product</th><th>Broker</th><th>Customer</th><th>Quantity</th><th>Value</th><th>Date</th></tr></thead>
+                  <thead><tr><th>Product</th><th>Broker</th><th>Customer</th><th>Phone</th><th>Address</th><th>Quantity</th><th>Value</th><th>Date</th></tr></thead>
                   <tbody>
                     {store.sales.length ? store.sales.map((sale) => (
                       <tr key={sale.id}>
                         <td><span className="cell-title">{sale.productName}</span><br /><span className="cell-meta">{sale.seller}</span></td>
                         <td>{sale.broker}</td>
                         <td>{sale.customer}</td>
+                        <td>{sale.customerPhone || 'Not added'}</td>
+                        <td>{sale.customerAddress || 'Not added'}</td>
                         <td>{sale.quantity}</td>
                         <td>{formatCurrency(sale.total)}</td>
                         <td>{formatDate(sale.createdAt)}</td>
                       </tr>
-                    )) : <EmptyRow colSpan={6} title="No transaction activity" text="Sales recorded by brokers will appear here." />}
+                    )) : <EmptyRow colSpan={8} title="No order activity" text="Orders placed by brokers will appear here." />}
                   </tbody>
                 </table>
               </div>

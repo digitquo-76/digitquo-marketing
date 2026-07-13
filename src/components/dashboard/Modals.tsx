@@ -127,23 +127,29 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
   );
 }
 
-export function SaleModal({ product, onClose, onSave }: any) {
+export function OrderModal({ product, onClose, onSave }: any) {
   const [quantity, setQuantity] = useState(1);
   const [customer, setCustomer] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [orderNotes, setOrderNotes] = useState('');
   useModal(Boolean(product));
 
   useEffect(() => {
     setQuantity(1);
     setCustomer('');
+    setCustomerPhone('');
+    setCustomerAddress('');
+    setOrderNotes('');
   }, [product]);
 
   if (!product) return null;
 
   return (
     <div className="modal-backdrop open" aria-hidden="false" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <form className="modal" onSubmit={(event) => { event.preventDefault(); onSave({ productId: product.id, customer: customer.trim(), quantity: Number(quantity) }); }}>
+      <form className="modal" onSubmit={(event) => { event.preventDefault(); onSave({ productId: product.id, customer: customer.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim(), orderNotes: orderNotes.trim(), quantity: Number(quantity) }); }}>
         <header className="modal-header">
-          <h2 className="modal-title">Record a customer sale</h2>
+          <h2 className="modal-title">Place order</h2>
           <button className="modal-close" type="button" onClick={onClose} aria-label="Close">x</button>
         </header>
         <div className="modal-body">
@@ -161,19 +167,31 @@ export function SaleModal({ product, onClose, onSave }: any) {
               <input className="form-control" value={formatCurrency(product.mrp ?? product.price)} readOnly />
             </label>
             <label className="form-group">
-              <span className="form-label">Quantity sold *</span>
+              <span className="form-label">Quantity *</span>
               <input className="form-control" value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} type="number" required min="1" max={product.stock} step="1" />
               <span className="form-help">{product.stock} units available at {formatCurrency(product.price)} selling price each.</span>
             </label>
             <label className="form-group full">
               <span className="form-label">Customer or business name *</span>
-              <input className="form-control" value={customer} onChange={(event) => setCustomer(event.target.value)} required maxLength={80} placeholder="Who did you sell this to?" />
+              <input className="form-control" value={customer} onChange={(event) => setCustomer(event.target.value)} required maxLength={120} placeholder="Who is this order for?" />
+            </label>
+            <label className="form-group">
+              <span className="form-label">Customer phone *</span>
+              <input className="form-control" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} required maxLength={40} placeholder="Phone number" />
+            </label>
+            <label className="form-group full">
+              <span className="form-label">Delivery address *</span>
+              <textarea className="form-control" value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} required maxLength={300} placeholder="Customer delivery address" />
+            </label>
+            <label className="form-group full">
+              <span className="form-label">Order notes</span>
+              <textarea className="form-control" value={orderNotes} onChange={(event) => setOrderNotes(event.target.value)} maxLength={300} placeholder="Size, color, timing, or other seller instructions" />
             </label>
           </div>
         </div>
         <footer className="modal-footer">
           <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onClose}>Cancel</button>
-          <button className="btn-dashboard btn-dashboard-primary" type="submit">Confirm sale</button>
+          <button className="btn-dashboard btn-dashboard-primary" type="submit">Place order</button>
         </footer>
       </form>
     </div>

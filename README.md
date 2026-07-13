@@ -6,7 +6,7 @@ DigitQuo Marketing is a Next.js marketplace app for sellers, brokers, and platfo
 
 - `/` - Public landing page with features, process, roles, testimonials, and call-to-action sections.
 - `/seller` - Seller workspace for managing products, inventory, and sales activity.
-- `/broker` - Broker workspace for browsing seller inventory, recording customer sales, and claiming rewards.
+- `/broker` - Broker workspace for browsing seller inventory, placing customer orders, and claiming rewards.
 - `/admin` - Owner/admin workspace for monitoring marketplace activity, products, transactions, and payout claims.
 
 ## Project Structure
