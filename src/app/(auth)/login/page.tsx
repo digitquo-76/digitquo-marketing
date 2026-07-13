@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showCreateAccountPrompt, setShowCreateAccountPrompt] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setShowCreateAccountPrompt(false);
     setSubmitting(true);
 
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -51,7 +53,10 @@ export default function LoginPage() {
 
     if (authError || !authData.user) {
       setSubmitting(false);
-      setError(authError?.message || 'Login failed.');
+      const message = authError?.message || 'Login failed.';
+      const invalidCredentials = message.toLowerCase().includes('invalid login credentials');
+      setError(invalidCredentials ? 'Account not found, or the password is incorrect.' : message);
+      setShowCreateAccountPrompt(invalidCredentials);
       return;
     }
 
@@ -65,6 +70,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
+    setShowCreateAccountPrompt(false);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -121,7 +127,17 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="auth-form">
-            {error && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
+            {error && (
+              <div className="auth-alert auth-alert-error" role="alert">
+                {error}
+                {showCreateAccountPrompt && (
+                  <>
+                    {' '}
+                    <Link href="/register" className="auth-link">Create an account</Link>
+                  </>
+                )}
+              </div>
+            )}
             <div className="auth-field-group">
               <label className="auth-label" htmlFor="email">Email address</label>
               <input

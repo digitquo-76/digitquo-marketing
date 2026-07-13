@@ -41,9 +41,8 @@ function AuthCallback() {
         }
 
         const code = searchParams.get('code');
-        if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) throw exchangeError;
+        if (code && !accessToken) {
+          throw new Error('This sign-in link was created for an older auth flow. Please start login or signup again.');
         }
 
         const { data: { user }, error: userError } = await supabase.auth.getUser();
