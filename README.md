@@ -49,7 +49,7 @@ RAZORPAY_KEY_SECRET=
 ```
 
 Apply `database.sql` in the Supabase SQL editor before signing users up or deploying schema changes.
-`SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL` are used by the server routes that email sellers and broker invoices after paid orders. Broker invoice emails include a generated PDF attachment.
+`SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL` are used by the server routes that email sellers, broker invoices, and admin payout-claim alerts. Broker invoice emails include a generated PDF attachment. Claim alerts go to profiles with the `admin` role and a saved email address.
 `NEXT_PUBLIC_RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` are used to create and verify Razorpay payments before broker orders are saved.
 `NEXT_PUBLIC_SITE_URL` should be set to the production domain, for example `https://digitquo.in`, so auth redirects return to the custom domain.
 
@@ -83,6 +83,7 @@ npm.cmd run start -- --port 3002
 - Dashboard data is stored in Supabase with Row Level Security enabled by `database.sql`.
 - Broker sales are created only by the server-side paid-order route after Razorpay verification. The schema stores Razorpay order/payment IDs to make retries idempotent.
 - Broker profiles collect payout account details. Claim requests snapshot those details so admins can manually transfer the claim amount and mark the claim as paid.
+- When a broker claims points, admins are emailed the claim amount and saved payout account details.
 - Admin routes include `noindex` response headers and client-side role redirects. Supabase RLS remains the source of truth for data access.
 - Create the first admin profile manually in Supabase after registering the owner account, then keep public registration limited to seller and broker roles.
 - Review the legal page copy with counsel before launch.

@@ -176,7 +176,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
     }
 
     try {
-      await store.addClaim({
+      const claim = await store.addClaim({
         broker: currentBroker,
         points: availablePoints,
         payoutAccountName: payoutDetails.accountName,
@@ -190,7 +190,31 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
       } catch {
         // The claim is saved; activity is only an admin-facing notification.
       }
-      store.showToast(`Claimed ${availablePoints} points. Payout will be processed within 24 hours.`, 'success');
+      let adminEmailSent = false;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (accessToken) {
+          const response = await fetch('/api/claims/notify-admin', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ claimId: claim.id })
+          });
+          const result = await response.json().catch(() => null);
+          adminEmailSent = response.ok && result?.sent === true;
+        }
+      } catch {
+        // The claim is saved; email delivery is handled separately.
+      }
+      store.showToast(
+        adminEmailSent
+          ? `Claimed ${availablePoints} points. Admin has been emailed with the payout details.`
+          : `Claimed ${availablePoints} points. Admin email could not be confirmed; please contact admin if needed.`,
+        adminEmailSent ? 'success' : 'error'
+      );
     } catch (error) {
       store.showToast(error instanceof Error ? error.message : 'Could not create payout claim.', 'error');
     }

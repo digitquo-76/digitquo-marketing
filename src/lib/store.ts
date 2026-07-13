@@ -255,6 +255,7 @@ export function useDigitQuoStore() {
       setClaimsState(prev => prev.filter(c => c.id !== newClaim.id));
       throw error;
     }
+    return newClaim;
   };
 
   const updateClaimStatus = async (id: string, status: 'pending' | 'paid') => {
