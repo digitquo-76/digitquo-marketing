@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
@@ -8,13 +8,17 @@ import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '
 import { DashboardShell } from './DashboardShell';
 import { ActivityList, EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
 import { ToastRegion } from '../ui/ToastRegion';
-import { ActivityIcon, BackIcon, GridIcon, PackageIcon, SaleIcon, ShieldIcon, UsersIcon, WalletIcon } from '../ui/icons';
+import { ActivityIcon, BackIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, ShieldIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
 type AdminSection = 'overview' | 'activity' | 'products' | 'transactions' | 'claims';
 
 export function AdminDashboardPage({ section }: { section: AdminSection }) {
   const store = useDigitQuoStore();
   const router = useRouter();
+  const [productSearch, setProductSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [sellerFilter, setSellerFilter] = useState('all');
+  const [stockFilter, setStockFilter] = useState('all');
   
   useEffect(() => {
     if (store.loading) return;
@@ -34,6 +38,20 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
   if (store.loading || !store.user || store.profile?.role !== 'admin' || !isProfileComplete(store.profile)) return <div style={{ padding: '40px' }}>Loading workspace...</div>;
 
   const sellers = new Set(store.products.map((product) => product.seller));
+  const productCategories = Array.from(new Set(store.products.map((product) => product.category))).sort();
+  const sellerNames = Array.from(sellers).sort();
+  const filteredProducts = store.products.filter((product) => {
+    const query = productSearch.trim().toLowerCase();
+    const matchesSearch = `${product.name} ${product.seller} ${product.category} ${product.description}`.toLowerCase().includes(query);
+    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+    const matchesSeller = sellerFilter === 'all' || product.seller === sellerFilter;
+    const matchesStock =
+      stockFilter === 'all' ||
+      (stockFilter === 'in-stock' && product.stock > 10) ||
+      (stockFilter === 'low-stock' && product.stock > 0 && product.stock <= 10) ||
+      (stockFilter === 'out-of-stock' && product.stock <= 0);
+    return matchesSearch && matchesCategory && matchesSeller && matchesStock;
+  });
   const brokers = new Set(store.sales.map((sale) => sale.broker));
   const grossSales = store.sales.reduce((sum, sale) => sum + sale.total, 0);
   const unitsSold = store.sales.reduce((sum, sale) => sum + sale.quantity, 0);
@@ -155,14 +173,34 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
               <header className="dashboard-card-header">
                 <div>
                   <h2 className="dashboard-card-title">All marketplace products</h2>
-                  <p className="dashboard-card-subtitle">Inventory published by every seller</p>
+                  <p className="dashboard-card-subtitle">{filteredProducts.length} of {store.products.length} products shown</p>
+                </div>
+                <div className="toolbar toolbar-wide">
+                  <label className="search-wrap">
+                    <SearchIcon size={15} />
+                    <input className="search-input" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} type="search" placeholder="Search products" aria-label="Search all products" />
+                  </label>
+                  <select className="filter-select" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter all products by category">
+                    <option value="all">All categories</option>
+                    {productCategories.map((categoryName) => <option value={categoryName} key={categoryName}>{categoryName}</option>)}
+                  </select>
+                  <select className="filter-select" value={sellerFilter} onChange={(event) => setSellerFilter(event.target.value)} aria-label="Filter products by seller">
+                    <option value="all">All sellers</option>
+                    {sellerNames.map((sellerName) => <option value={sellerName} key={sellerName}>{sellerName}</option>)}
+                  </select>
+                  <select className="filter-select" value={stockFilter} onChange={(event) => setStockFilter(event.target.value)} aria-label="Filter all products by stock status">
+                    <option value="all">All stock</option>
+                    <option value="in-stock">In stock</option>
+                    <option value="low-stock">Low stock</option>
+                    <option value="out-of-stock">Out of stock</option>
+                  </select>
                 </div>
               </header>
               <div className="table-wrap">
                 <table className="data-table">
                   <thead><tr><th>Product</th><th>Seller</th><th>MRP</th><th>Selling price</th><th>Stock</th><th>Status</th><th>Added</th></tr></thead>
                   <tbody>
-                    {store.products.length ? store.products.map((product) => (
+                    {filteredProducts.length ? filteredProducts.map((product) => (
                       <tr key={product.id}>
                         <td><ProductCell product={product} /></td>
                         <td>{product.seller}</td>
@@ -172,7 +210,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
                         <td><StockBadge stock={product.stock} /></td>
                         <td>{formatDate(product.createdAt)}</td>
                       </tr>
-                    )) : <EmptyRow colSpan={7} title="No products found" text="Seller listings will appear here." />}
+                    )) : <EmptyRow colSpan={7} title="No products found" text="Seller listings will appear here, or adjust your search and filters." />}
                   </tbody>
                 </table>
               </div>

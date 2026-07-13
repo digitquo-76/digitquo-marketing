@@ -18,6 +18,8 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
   const store = useDigitQuoStore();
   const router = useRouter();
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [stockFilter, setStockFilter] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
 
@@ -42,7 +44,18 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
   const myProducts = store.products.filter((product) => product.seller === currentSeller);
   const myProductIds = new Set(myProducts.map((product) => product.id));
   const mySales = store.sales.filter((sale) => myProductIds.has(sale.productId) || sale.seller === currentSeller);
-  const visibleProducts = myProducts.filter((product) => `${product.name} ${product.category}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const productCategories = Array.from(new Set(myProducts.map((product) => product.category))).sort();
+  const visibleProducts = myProducts.filter((product) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = `${product.name} ${product.category} ${product.description}`.toLowerCase().includes(query);
+    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+    const matchesStock =
+      stockFilter === 'all' ||
+      (stockFilter === 'in-stock' && product.stock > 10) ||
+      (stockFilter === 'low-stock' && product.stock > 0 && product.stock <= 10) ||
+      (stockFilter === 'out-of-stock' && product.stock <= 0);
+    return matchesSearch && matchesCategory && matchesStock;
+  });
   const activity = store.activity.filter((item) => item.message.includes(currentSeller) || item.type === 'sale').slice(0, 12);
   const lowStockCount = myProducts.filter((product) => product.stock > 0 && product.stock <= 10).length;
   const inventoryCount = myProducts.reduce((sum, product) => sum + product.stock, 0);
@@ -204,6 +217,16 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
                     <SearchIcon size={15} />
                     <input className="search-input" value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Search products" aria-label="Search my products" />
                   </label>
+                  <select className="filter-select" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter my products by category">
+                    <option value="all">All categories</option>
+                    {productCategories.map((categoryName) => <option value={categoryName} key={categoryName}>{categoryName}</option>)}
+                  </select>
+                  <select className="filter-select" value={stockFilter} onChange={(event) => setStockFilter(event.target.value)} aria-label="Filter my products by stock status">
+                    <option value="all">All stock</option>
+                    <option value="in-stock">In stock</option>
+                    <option value="low-stock">Low stock</option>
+                    <option value="out-of-stock">Out of stock</option>
+                  </select>
                 </div>
               </header>
               <div className="table-wrap">
@@ -225,7 +248,7 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
                           </div>
                         </td>
                       </tr>
-                    )) : <EmptyRow colSpan={7} title="No products found" text="Add your first product or adjust your search." />}
+                    )) : <EmptyRow colSpan={7} title="No products found" text="Add your first product or adjust your search and filters." />}
                   </tbody>
                 </table>
               </div>

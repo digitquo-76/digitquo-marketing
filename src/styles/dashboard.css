@@ -428,6 +428,11 @@ a {
   gap: 10px;
 }
 
+.toolbar-wide {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .search-wrap {
   position: relative;
 }
