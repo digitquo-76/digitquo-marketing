@@ -49,7 +49,7 @@ function AuthCallback() {
 
   return (
     <main className="auth-main">
-      <section className="auth-panel">
+      <section className="auth-dashboard">
         <aside className="auth-story" aria-label="Signing in">
           <div className="auth-story-content">
             <span className="auth-badge"><span className="badge-dot" /> Secure sign in</span>

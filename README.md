@@ -13,8 +13,8 @@ DigitQuo Marketing is a Next.js marketplace app for sellers, brokers, and platfo
 
 - `src/app/(marketing)` - Public marketing route and layout.
 - `src/app/(auth)` - Login and registration routes.
-- `src/app/(panel)` - Seller, broker, and admin dashboard routes.
-- `src/components` - Shared UI, marketing sections, and dashboard panels.
+- `src/app/(dashboard)` - Seller, broker, and admin dashboard routes.
+- `src/components` - Shared UI, marketing sections, and dashboard screens.
 - `src/lib/supabase.ts` - Supabase browser client.
 - `src/lib/store.ts` - Client data store and Supabase read/write actions.
 - `database.sql` - Supabase schema, constraints, indexes, and RLS policies.

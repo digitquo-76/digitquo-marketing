@@ -63,7 +63,7 @@ export function RolesSection() {
   return (
     <section id="roles" className="section roles">
       <div className="container">
-        <SectionHeader tag="Who It's For" icon={<UsersIcon key="users" />} title={<>Built for both sides<br />of modern trade.</>} subtitle="Whether you sell products or source the right deals - there's a panel built for you." />
+        <SectionHeader tag="Who It's For" icon={<UsersIcon key="users" />} title={<>Built for both sides<br />of modern trade.</>} subtitle="Whether you sell products or source the right deals - there's a dashboard built for you." />
         <div className="roles-grid">
           <RoleCard
             title="Sellers"

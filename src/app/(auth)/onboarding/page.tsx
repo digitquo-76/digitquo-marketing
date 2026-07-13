@@ -126,7 +126,7 @@ export default function OnboardingPage() {
 
   return (
     <main className="auth-main">
-      <section className="auth-panel">
+      <section className="auth-dashboard">
         <aside className="auth-story" aria-label="Complete your profile">
           <div className="auth-story-content">
             <span className="auth-badge"><span className="badge-dot" /> One last step</span>

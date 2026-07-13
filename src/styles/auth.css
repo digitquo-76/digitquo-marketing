@@ -53,7 +53,7 @@
   padding: var(--space-3xl) 0;
 }
 
-.auth-panel {
+.auth-dashboard {
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(380px, 1fr);
   overflow: hidden;
@@ -66,7 +66,7 @@
   -webkit-backdrop-filter: blur(20px);
 }
 
-.auth-panel,
+.auth-dashboard,
 .auth-story,
 .auth-form-wrap,
 .auth-field-group,
@@ -358,7 +358,7 @@
     padding: 22px;
   }
 
-  .auth-panel {
+  .auth-dashboard {
     grid-template-columns: 1fr;
   }
 
@@ -396,7 +396,7 @@
     padding: var(--space-xl) 0 0;
   }
 
-  .auth-panel {
+  .auth-dashboard {
     min-height: 0;
     border-radius: var(--radius-lg);
   }
@@ -539,7 +539,7 @@
     overflow: hidden;
   }
 
-  .auth-panel {
+  .auth-dashboard {
     width: 100%;
   }
 
