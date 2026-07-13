@@ -27,7 +27,7 @@ export default function LandingPage() {
             The marketplace<br />built for <span className="text-gradient">modern trade</span>
           </h1>
           <p className="hero-subtitle reveal reveal-delay-2">
-            DigitQuo connects sellers and brokers on one seamless platform.<br className="hide-mobile" />
+            DigitQuo Store connects sellers and brokers on one seamless platform.<br className="hide-mobile" />
             List products, discover deals, and scale your business - effortlessly.
           </p>
           <div className="hero-cta reveal reveal-delay-3">

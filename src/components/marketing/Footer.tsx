@@ -9,7 +9,7 @@ export function Footer() {
           <div className="footer-brand">
             <a href="#" className="logo">
               <LogoMark />
-              <span className="logo-text">DigitQuo</span>
+              <span className="logo-text">DigitQuo Store</span>
             </a>
             <p className="footer-tagline">The smarter way to market and sell. Connecting sellers and brokers on one platform.</p>
             <div className="footer-socials">
@@ -23,7 +23,7 @@ export function Footer() {
           <FooterCol title="Legal" items={[['#', 'Privacy Policy'], ['#', 'Terms of Service'], ['#', 'Cookie Policy']]} />
         </div>
         <div className="footer-bottom">
-          <p>&copy; 2026 DigitQuo. All rights reserved.</p>
+          <p>&copy; 2026 DigitQuo Store. All rights reserved.</p>
           <p>Made with passion for modern trade.</p>
         </div>
       </div>

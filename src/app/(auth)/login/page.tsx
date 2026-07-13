@@ -77,7 +77,7 @@ export default function LoginPage() {
   return (
     <main className="auth-main">
       <section className="auth-dashboard">
-        <aside className="auth-story" aria-label="DigitQuo marketplace highlights">
+        <aside className="auth-story" aria-label="DigitQuo Store marketplace highlights">
           <div className="auth-story-content">
             <span className="auth-badge"><span className="badge-dot" /> Modern trade access</span>
             <h1 className="auth-title">Pick up right where your marketplace left off.</h1>
@@ -101,7 +101,7 @@ export default function LoginPage() {
           <div className="auth-form-header">
             <span className="auth-kicker"><ShieldIcon size={14} /> Secure sign in</span>
             <h2 className="auth-form-title">Welcome back</h2>
-            <p className="auth-form-subtitle">Sign in to continue to your DigitQuo dashboard.</p>
+            <p className="auth-form-subtitle">Sign in to continue to your DigitQuo Store dashboard.</p>
           </div>
 
           <button type="button" onClick={handleGoogleLogin} className="btn-dashboard btn-dashboard-secondary" style={{ width: '100%', marginBottom: '20px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
@@ -161,7 +161,7 @@ export default function LoginPage() {
           </form>
 
           <p className="auth-alt" style={{ marginTop: '30px' }}>
-            New to DigitQuo?{' '}
+            New to DigitQuo Store?{' '}
             <Link href="/register" className="auth-link">Create an account</Link>
           </p>
         </div>

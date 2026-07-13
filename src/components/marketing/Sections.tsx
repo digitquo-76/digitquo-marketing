@@ -13,7 +13,7 @@ export function FeaturesSection() {
   return (
     <section id="features" className="section features">
       <div className="container">
-        <SectionHeader tag="Why DigitQuo" icon={<StarIcon key="star" />} title={<>Everything you need,<br />nothing you don't.</>} subtitle="Powerful features designed to make marketing and selling simple, fast, and profitable." />
+        <SectionHeader tag="Why DigitQuo Store" icon={<StarIcon key="star" />} title={<>Everything you need,<br />nothing you don't.</>} subtitle="Powerful features designed to make marketing and selling simple, fast, and profitable." />
         <div className="features-grid">
           {features.map(([title, desc, icon], index) => (
             <div className={`feature-card reveal${index ? ` reveal-delay-${index}` : ''}`} key={title as string}>
@@ -107,7 +107,7 @@ function RoleCard({ title, desc, features, href, cta, icon, featured = false }: 
 
 export function TestimonialsSection() {
   const testimonials = [
-    ['RK', 'Rahul Kumar', 'Seller, Delhi', '"DigitQuo transformed how I sell. I listed my products once, and brokers started reaching out within hours. It\'s the simplest tool I\'ve ever used."'],
+    ['RK', 'Rahul Kumar', 'Seller, Delhi', '"DigitQuo Store transformed how I sell. I listed my products once, and brokers started reaching out within hours. It\'s the simplest tool I\'ve ever used."'],
     ['PS', 'Priya Sharma', 'Broker, Mumbai', '"As a broker, finding quality products used to take days. Now I browse, connect, and close deals - all from one place. Absolute game changer."'],
     ['NM', 'Neha Malhotra', 'Seller, Jaipur', '"The analytics make it easy to see which products are moving and where to focus next. Clean, fast, and genuinely useful."']
   ] as const;
@@ -143,7 +143,7 @@ export function CtaSection() {
         <div className="cta-box reveal">
           <div className="cta-glow" />
           <h2 className="cta-title">Ready to grow your business?</h2>
-          <p className="cta-desc">Join thousands of sellers and brokers already thriving on DigitQuo. Start free - no credit card needed.</p>
+          <p className="cta-desc">Join thousands of sellers and brokers already thriving on DigitQuo Store. Start free - no credit card needed.</p>
           <div className="cta-actions">
             <a href="#roles" className="btn btn-primary btn-lg" id="cta-start">Get started today <ArrowRightIcon size={16} /></a>
             <a href="#" className="btn btn-glass btn-lg" id="cta-contact">Talk to sales</a>

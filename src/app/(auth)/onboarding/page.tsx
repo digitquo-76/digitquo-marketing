@@ -130,8 +130,8 @@ export default function OnboardingPage() {
         <aside className="auth-story" aria-label="Complete your profile">
           <div className="auth-story-content">
             <span className="auth-badge"><span className="badge-dot" /> One last step</span>
-            <h1 className="auth-title">Finish your DigitQuo profile.</h1>
-            <p className="auth-copy">Google gives us your identity. This step tells DigitQuo which workspace to open and what details to attach to your account.</p>
+            <h1 className="auth-title">Finish your DigitQuo Store profile.</h1>
+            <p className="auth-copy">Google gives us your identity. This step tells DigitQuo Store which workspace to open and what details to attach to your account.</p>
           </div>
         </aside>
 

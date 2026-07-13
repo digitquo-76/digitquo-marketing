@@ -133,7 +133,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
           key: checkoutOrder.keyId,
           amount: checkoutOrder.amount,
           currency: checkoutOrder.currency,
-          name: 'DigitQuo',
+          name: 'DigitQuo Store',
           description: `${product.name} x ${quantity}`,
           order_id: checkoutOrder.orderId,
           prefill: {

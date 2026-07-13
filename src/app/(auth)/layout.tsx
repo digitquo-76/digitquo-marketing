@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { ArrowRightIcon, LogoMark } from '../../components/ui/icons';
 
 export const metadata = {
-  title: 'DigitQuo - Authentication',
-  description: 'Log in or create an account for DigitQuo.'
+  title: 'DigitQuo Store - Authentication',
+  description: 'Log in or create an account for DigitQuo Store.'
 };
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -26,7 +26,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="auth-topbar">
             <Link href="/" className="auth-home-link">
               <LogoMark />
-              <span>DigitQuo</span>
+              <span>DigitQuo Store</span>
             </Link>
             <Link href="/#roles" className="auth-mini-link">
               Explore roles <ArrowRightIcon size={14} />

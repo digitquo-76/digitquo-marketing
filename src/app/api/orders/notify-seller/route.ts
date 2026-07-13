@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({
       from: resendFromEmail,
       to: seller.email,
-      subject: `New DigitQuo order: ${order.product_name}`,
+      subject: `New DigitQuo Store order: ${order.product_name}`,
       html: buildOrderEmailHtml(order, sellerName),
       text: buildOrderEmailText(order, sellerName)
     })
@@ -160,7 +160,7 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
   return [
     `Hi ${sellerName},`,
     '',
-    'A broker placed a new DigitQuo order.',
+    'A broker placed a new DigitQuo Store order.',
     '',
     `Product: ${order.product_name}`,
     `Quantity: ${order.quantity}`,

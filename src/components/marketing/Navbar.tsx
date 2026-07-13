@@ -51,7 +51,7 @@ export function Navbar() {
       <div className="container nav-container">
         <a href="#" className="logo" id="logo">
           <LogoMark />
-          <span className="logo-text">DigitQuo</span>
+          <span className="logo-text">DigitQuo Store</span>
         </a>
         <ul className={`nav-links${mobileOpen ? ' mobile-open' : ''}`} id="nav-links">
           {[

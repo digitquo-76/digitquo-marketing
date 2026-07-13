@@ -1,8 +1,8 @@
 import '../../styles/app.css';
 
 export const metadata = {
-  title: 'DigitQuo - Dashboard',
-  description: 'Manage your DigitQuo account.'
+  title: 'DigitQuo Store - Dashboard',
+  description: 'Manage your DigitQuo Store account.'
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

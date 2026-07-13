@@ -113,7 +113,7 @@ export function ProfileDashboardPage() {
         <section className="page-heading">
           <div>
             <p className="eyebrow">Account profile</p>
-            <h1 className="page-title">Your DigitQuo details.</h1>
+            <h1 className="page-title">Your DigitQuo Store details.</h1>
             <p className="page-description">Review your login, role, and the profile details used across your workspace.</p>
           </div>
         </section>

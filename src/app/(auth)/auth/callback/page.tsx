@@ -54,7 +54,7 @@ function AuthCallback() {
           <div className="auth-story-content">
             <span className="auth-badge"><span className="badge-dot" /> Secure sign in</span>
             <h1 className="auth-title">Connecting your account.</h1>
-            <p className="auth-copy">DigitQuo is verifying your Google sign in and preparing your workspace.</p>
+            <p className="auth-copy">DigitQuo Store is verifying your Google sign in and preparing your workspace.</p>
           </div>
         </aside>
         <div className="auth-form-wrap">

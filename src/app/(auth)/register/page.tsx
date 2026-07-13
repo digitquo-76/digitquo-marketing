@@ -109,7 +109,7 @@ function RegisterForm() {
   return (
     <main className="auth-main">
       <section className="auth-dashboard">
-        <aside className="auth-story" aria-label="DigitQuo account benefits">
+        <aside className="auth-story" aria-label="DigitQuo Store account benefits">
           <div className="auth-story-content">
             <span className="auth-badge"><span className="badge-dot" /> Early access is open</span>
             <h1 className="auth-title">Start trading from the side that fits your business.</h1>

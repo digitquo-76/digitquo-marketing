@@ -1,6 +1,6 @@
-# DigitQuo Marketing
+# DigitQuo Store
 
-DigitQuo Marketing is a Next.js marketplace app for sellers, brokers, and platform admins. It includes a public landing page, Supabase authentication, role-specific dashboards, product inventory, broker sales, and payout claims.
+DigitQuo Store is a Next.js marketplace app for sellers, brokers, and platform admins. It includes a public landing page, Supabase authentication, role-specific dashboards, product inventory, broker sales, and payout claims.
 
 ## Pages
 

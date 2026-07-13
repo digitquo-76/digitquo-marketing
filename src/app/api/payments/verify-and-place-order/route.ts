@@ -160,7 +160,7 @@ async function sendSellerOrderEmail(serviceClient: SupabaseClient, order: SaleRo
   const sellerName = seller.business_name || seller.display_name || order.seller;
   await sendEmail({
     to: seller.email,
-    subject: `New DigitQuo order: ${order.product_name}`,
+    subject: `New DigitQuo Store order: ${order.product_name}`,
     html: buildOrderEmailHtml(order, sellerName),
     text: buildOrderEmailText(order, sellerName)
   });
@@ -245,7 +245,7 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
   return [
     `Hi ${sellerName},`,
     '',
-    'A broker completed payment and placed a new DigitQuo order.',
+    'A broker completed payment and placed a new DigitQuo Store order.',
     '',
     `Product: ${order.product_name}`,
     `Quantity: ${order.quantity}`,
@@ -275,7 +275,7 @@ function buildBrokerInvoiceHtml(order: SaleRow, brokerName: string, paymentId: s
   return `
     <div style="font-family:Arial,sans-serif;color:#171321;line-height:1.5">
       <h1 style="font-size:22px;margin:0 0 12px">Payment invoice</h1>
-      <p style="margin:0 0 18px">Hi ${escapeHtml(brokerName)}, your DigitQuo payment was successful.</p>
+      <p style="margin:0 0 18px">Hi ${escapeHtml(brokerName)}, your DigitQuo Store payment was successful.</p>
       ${buildRows(rows)}
     </div>
   `;
@@ -285,7 +285,7 @@ function buildBrokerInvoiceText(order: SaleRow, brokerName: string, paymentId: s
   return [
     `Hi ${brokerName},`,
     '',
-    'Your DigitQuo payment was successful.',
+    'Your DigitQuo Store payment was successful.',
     '',
     `Invoice/order ID: ${order.id}`,
     `Razorpay payment ID: ${paymentId}`,
