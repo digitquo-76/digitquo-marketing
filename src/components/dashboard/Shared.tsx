@@ -1,7 +1,7 @@
 'use client';
 
 import { Product, Activity } from '../../types';
-import { safeImageUrl, relativeTime } from '../../lib/utils';
+import { getProductImages, relativeTime } from '../../lib/utils';
 import { SaleIcon, PackageIcon, ActivityIcon } from '../ui/icons';
 
 export function Metric({ icon, value, label }: { icon: React.ReactNode, value: number | string, label: string }) {
@@ -27,7 +27,7 @@ export function ProductCell({ product }: { product: Product }) {
 }
 
 export function ProductImage({ product }: { product: Product }) {
-  const image = safeImageUrl(product.image || '');
+  const image = getProductImages(product.image || '')[0] || '';
   return image ? <img src={image} alt="" loading="lazy" /> : <>{product.name.slice(0, 2).toUpperCase()}</>;
 }
 

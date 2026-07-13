@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { supabase } from '../../lib/supabase';
 import { Product } from '../../types';
-import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
+import { formatCurrency, formatDate, getProductImages, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { EmptyRow, Metric, ProductImage } from './Shared';
 import { OrderModal } from './Modals';
@@ -90,6 +90,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
   const hasPayoutDetails = Boolean(payoutDetails.accountName && (payoutDetails.upi || (payoutDetails.bankName && payoutDetails.accountNumber && payoutDetails.ifsc)));
 
   const activeProduct = productId ? store.products.find((p) => p.id === productId) : null;
+  const activeProductImages = activeProduct ? getProductImages(activeProduct.image || '') : [];
   const activeProductInStock = Boolean(activeProduct && activeProduct.stock > 0);
   const relatedProducts = activeProduct ? available.filter(p => p.id !== activeProduct.id && p.category === activeProduct.category).slice(0, 5) : [];
   if (relatedProducts.length < 5 && activeProduct) {
@@ -459,8 +460,19 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
               </section>
 
               <div className="product-detail-layout">
-                <div className="product-detail-image-wrap">
-                  <ProductImage product={activeProduct} />
+                <div className="product-detail-gallery">
+                  <div className="product-detail-image-wrap">
+                    <ProductImage product={activeProduct} />
+                  </div>
+                  {activeProductImages.length > 1 && (
+                    <div className="product-detail-thumbs" aria-label="Product photos">
+                      {activeProductImages.slice(1).map((image, index) => (
+                        <span className="product-detail-thumb" key={`${image.slice(0, 40)}-${index}`}>
+                          <img src={image} alt="" loading="lazy" />
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="product-detail-info">
                   <p className="catalog-seller">{activeProduct.seller}</p>

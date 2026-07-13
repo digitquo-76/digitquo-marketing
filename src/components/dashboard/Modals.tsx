@@ -1,7 +1,35 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { safeImageUrl, formatCurrency } from '../../lib/utils';
+import { formatCurrency, getProductImages, serializeProductImages } from '../../lib/utils';
+
+const PRODUCT_CATEGORIES = [
+  'Apparel',
+  'Accessories',
+  'Footwear',
+  'Beauty & Personal Care',
+  'Electronics',
+  'Mobiles & Gadgets',
+  'Home & Living',
+  'Kitchen & Dining',
+  'Furniture',
+  'Food & Beverages',
+  'Grocery & Staples',
+  'Health & Wellness',
+  'Baby & Kids',
+  'Toys & Games',
+  'Books & Stationery',
+  'Sports & Fitness',
+  'Automotive',
+  'Hardware & Tools',
+  'Jewellery',
+  'Bags & Luggage',
+  'Pet Supplies',
+  'Office Supplies',
+  'Other'
+];
+
+const PRODUCT_IMAGE_MAX_SIZE_MB = 20;
 
 export function ProductModal({ open, product, onClose, onSave, showToast }: any) {
   const initial = useMemo(
@@ -25,21 +53,30 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
   if (!open) return null;
 
   const update = (key: string, value: string) => setValues((current: any) => ({ ...current, [key]: value }));
+  const images = getProductImages(String(values.image || ''));
+  const setImages = (nextImages: string[]) => update('image', serializeProductImages(nextImages));
 
-  const updateImageFile = (file?: File) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      showToast('Please choose an image file.', 'error');
+  const updateImageFiles = (files?: FileList | null) => {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
+    const invalid = selected.find((file) => !file.type.startsWith('image/'));
+    if (invalid) {
+      showToast('Please choose only image files.', 'error');
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Choose an image smaller than 2 MB.', 'error');
+    const oversized = selected.find((file) => file.size > PRODUCT_IMAGE_MAX_SIZE_MB * 1024 * 1024);
+    if (oversized) {
+      showToast(`Each image must be smaller than ${PRODUCT_IMAGE_MAX_SIZE_MB} MB.`, 'error');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => update('image', String(reader.result || ''));
-    reader.onerror = () => showToast('Could not read that image. Try another file.', 'error');
-    reader.readAsDataURL(file);
+    if (images.length + selected.length > 8) {
+      showToast('You can add up to 8 product photos.', 'error');
+      return;
+    }
+
+    Promise.all(selected.map((file) => readImageFile(file)))
+      .then((nextImages) => setImages([...images, ...nextImages]))
+      .catch(() => showToast('Could not read one of those images. Try again.', 'error'));
   };
 
   const submit = (event: React.FormEvent) => {
@@ -50,7 +87,7 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       mrp: Number(values.mrp),
       commission: Number(values.commission),
       stock: Number(values.stock),
-      image: safeImageUrl(String(values.image || '').trim()),
+      image: serializeProductImages(images),
       description: String(values.description || '').trim()
     };
     if (!cleaned.name || !cleaned.category || cleaned.mrp <= 0 || cleaned.commission < 0 || cleaned.stock < 0) {
@@ -63,8 +100,6 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
     }
     onSave(cleaned);
   };
-
-  const image = safeImageUrl(String(values.image || ''));
 
   return (
     <div className="modal-backdrop open" aria-hidden="false" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -83,12 +118,7 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
               <span className="form-label">Category *</span>
               <select className="form-control" value={values.category || ''} onChange={(event) => update('category', event.target.value)} required>
                 <option value="">Choose category</option>
-                <option>Apparel</option>
-                <option>Accessories</option>
-                <option>Electronics</option>
-                <option>Food</option>
-                <option>Home &amp; Living</option>
-                <option>Other</option>
+                {PRODUCT_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
               </select>
             </label>
             <label className="form-group">
@@ -104,17 +134,22 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
               <input className="form-control" value={values.stock ?? ''} onChange={(event) => update('stock', event.target.value)} type="number" required min="0" step="1" placeholder="25" />
             </label>
             <div className="form-group full">
-              <span className="form-label">Product image</span>
+              <span className="form-label">Product images</span>
               <div className="image-upload-row">
-                <span className="image-upload-preview">
-                  {image ? <img src={image} alt="" /> : 'IMG'}
-                </span>
+                <div className="image-upload-preview-grid">
+                  {images.length ? images.map((image, index) => (
+                    <span className="image-upload-preview" key={`${image.slice(0, 40)}-${index}`}>
+                      <img src={image} alt="" />
+                      <button type="button" className="image-remove-button" onClick={() => setImages(images.filter((_, imageIndex) => imageIndex !== index))} aria-label={`Remove product image ${index + 1}`}>x</button>
+                    </span>
+                  )) : <span className="image-upload-preview">IMG</span>}
+                </div>
                 <label className="file-upload-button">
                   Choose from gallery
-                  <input type="file" accept="image/*" onChange={(event) => updateImageFile(event.target.files?.[0])} />
+                  <input type="file" accept="image/*" multiple onChange={(event) => updateImageFiles(event.target.files)} />
                 </label>
               </div>
-              <span className="form-help">Select an image from your mobile gallery or computer. Max size: 2 MB.</span>
+              <span className="form-help">Select up to 8 images from your mobile gallery or computer. Max size: {PRODUCT_IMAGE_MAX_SIZE_MB} MB each.</span>
             </div>
             <label className="form-group full">
               <span className="form-label">Description</span>
@@ -129,6 +164,15 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       </form>
     </div>
   );
+}
+
+function readImageFile(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 export function OrderModal({ product, onClose, onSave, submitting = false }: any) {

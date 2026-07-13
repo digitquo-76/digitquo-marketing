@@ -38,6 +38,30 @@ export function safeImageUrl(url: string): string {
   return '';
 }
 
+export function getProductImages(value: string): string[] {
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => safeImageUrl(String(item || ''))).filter(Boolean);
+    }
+  } catch {
+    // Legacy products stored one plain image URL/data URI in this field.
+  }
+
+  const image = safeImageUrl(raw);
+  return image ? [image] : [];
+}
+
+export function serializeProductImages(images: string[]): string {
+  const clean = images.map((image) => safeImageUrl(image)).filter(Boolean);
+  if (!clean.length) return '';
+  if (clean.length === 1) return clean[0];
+  return JSON.stringify(clean);
+}
+
 export function getAuthCallbackUrl() {
   const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '');
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
