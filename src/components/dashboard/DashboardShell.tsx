@@ -56,7 +56,10 @@ export function DashboardShell({ label, nav, user, title, actions, children }: D
         <p className="dashboard-label">{label}</p>
         <nav className="sidebar-nav">
           {nav.map(([href, navLabel, icon]) => {
-            const active = pathname === href;
+            const active =
+              pathname === href ||
+              (href === '/seller/products' && pathname.startsWith('/seller/product/')) ||
+              (href === '/broker/catalog' && pathname.startsWith('/broker/product/'));
             return (
               <Link
                 className={`sidebar-link${active ? ' active' : ''}`}

@@ -7,10 +7,10 @@ import { useDigitQuoStore } from '../../lib/store';
 import { supabase } from '../../lib/supabase';
 import { Product } from '../../types';
 import { getMonthlyTrend, getProductPerformance } from '../../lib/analytics';
-import { formatCurrency, formatDate, getProductImages, isProfileComplete, routeForProfile } from '../../lib/utils';
+import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { AnalyticsBarChart, AnalyticsRanking } from './Analytics';
-import { EmptyRow, Metric, ProductImage } from './Shared';
+import { EmptyRow, Metric, ProductImage, ProductImageCarousel } from './Shared';
 import { OrderModal } from './Modals';
 import { ToastRegion } from '../ui/ToastRegion';
 import { ChartIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon } from '../ui/icons';
@@ -103,7 +103,6 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
   const hasPayoutDetails = Boolean(payoutDetails.accountName && (payoutDetails.upi || (payoutDetails.bankName && payoutDetails.accountNumber && payoutDetails.ifsc)));
 
   const activeProduct = productId ? store.products.find((p) => p.id === productId) : null;
-  const activeProductImages = activeProduct ? getProductImages(activeProduct.image || '') : [];
   const activeProductInStock = Boolean(activeProduct && activeProduct.stock > 0);
   const relatedProducts = activeProduct ? available.filter(p => p.id !== activeProduct.id && p.category === activeProduct.category).slice(0, 5) : [];
   if (relatedProducts.length < 5 && activeProduct) {
@@ -535,18 +534,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
 
               <div className="product-detail-layout">
                 <div className="product-detail-gallery">
-                  <div className="product-detail-image-wrap">
-                    <ProductImage product={activeProduct} />
-                  </div>
-                  {activeProductImages.length > 1 && (
-                    <div className="product-detail-thumbs" aria-label="Product photos">
-                      {activeProductImages.slice(1).map((image, index) => (
-                        <span className="product-detail-thumb" key={`${image.slice(0, 40)}-${index}`}>
-                          <img src={image} alt="" loading="lazy" />
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <ProductImageCarousel product={activeProduct} key={activeProduct.id} />
                 </div>
                 <div className="product-detail-info">
                   <p className="catalog-seller">{activeProduct.seller}</p>

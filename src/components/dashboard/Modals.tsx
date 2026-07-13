@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { formatCurrency, getProductImages, serializeProductImages } from '../../lib/utils';
 
-const PRODUCT_CATEGORIES = [
+export const PRODUCT_CATEGORIES = [
   'Apparel',
   'Accessories',
   'Footwear',

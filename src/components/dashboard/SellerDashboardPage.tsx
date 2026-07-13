@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
@@ -9,14 +9,23 @@ import { getMonthlyTrend, getProductPerformance } from '../../lib/analytics';
 import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { AnalyticsBarChart, AnalyticsRanking } from './Analytics';
-import { EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
-import { ProductModal } from './Modals';
+import { EmptyRow, Metric, ProductCell, ProductImageCarousel, StockBadge } from './Shared';
+import { PRODUCT_CATEGORIES, ProductModal } from './Modals';
 import { ToastRegion } from '../ui/ToastRegion';
-import { ChartIcon, EditIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, TrashIcon, UsersIcon } from '../ui/icons';
+import { BackIcon, ChartIcon, EditIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, TrashIcon, UsersIcon } from '../ui/icons';
 
-type SellerSection = 'overview' | 'products' | 'orders' | 'analytics';
+type SellerSection = 'overview' | 'products' | 'orders' | 'analytics' | 'product';
+type ProductSaveValues = {
+  name: string;
+  category: string;
+  mrp: number;
+  commission: number;
+  stock: number;
+  image?: string;
+  description: string;
+};
 
-export function SellerDashboardPage({ section }: { section: SellerSection }) {
+export function SellerDashboardPage({ section, productId }: { section: SellerSection; productId?: string }) {
   const store = useDigitQuoStore();
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -73,32 +82,59 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
       value: product.orderValue,
       detail: `${product.units} ${product.units === 1 ? 'unit' : 'units'} · ${product.orders} ${product.orders === 1 ? 'order' : 'orders'}`
     }));
+  const activeProduct = productId ? myProducts.find((product) => product.id === productId) : null;
+  const activeProductSales = activeProduct ? mySales.filter((sale) => sale.productId === activeProduct.id) : [];
+  const activeProductOrderValue = activeProductSales.reduce((sum, sale) => sum + sale.total, 0);
+  const activeProductUnitsSold = activeProductSales.reduce((sum, sale) => sum + sale.quantity, 0);
 
   const openAddProduct = () => {
     setEditing(null);
     setModalOpen(true);
   };
 
-  const saveProduct = async (values: any) => {
+  const updateExistingProduct = async (product: Product, values: ProductSaveValues) => {
     try {
-      if (editing) {
-        await store.updateProduct({ ...editing, ...values });
-        await store.addActivity('product', `${currentSeller} updated ${values.name}.`);
-        store.showToast('Product updated successfully.', 'success');
-      } else {
-        await store.addProduct({
-          name: values.name,
-          category: values.category,
-          mrp: Number(values.mrp),
-          commission: Number(values.commission),
-          stock: Number(values.stock),
-          seller: currentSeller,
-          image: values.image || '',
-          description: values.description || ''
-        });
-        await store.addActivity('product', `${currentSeller} published ${values.name}.`);
-        store.showToast('Product is now available to brokers.', 'success');
+      await store.updateProduct({
+        ...product,
+        ...values,
+        mrp: Number(values.mrp),
+        commission: Number(values.commission),
+        stock: Number(values.stock),
+        image: values.image ?? product.image,
+        description: values.description || ''
+      });
+      await store.addActivity('product', `${currentSeller} updated ${values.name}.`);
+      store.showToast('Product updated successfully.', 'success');
+      return true;
+    } catch (error) {
+      store.showToast(error instanceof Error ? error.message : 'Could not save product.', 'error');
+      return false;
+    }
+  };
+
+  const saveProduct = async (values: ProductSaveValues) => {
+    if (editing) {
+      const saved = await updateExistingProduct(editing, values);
+      if (saved) {
+        setModalOpen(false);
+        setEditing(null);
       }
+      return;
+    }
+
+    try {
+      await store.addProduct({
+        name: values.name,
+        category: values.category,
+        mrp: Number(values.mrp),
+        commission: Number(values.commission),
+        stock: Number(values.stock),
+        seller: currentSeller,
+        image: values.image || '',
+        description: values.description || ''
+      });
+      await store.addActivity('product', `${currentSeller} published ${values.name}.`);
+      store.showToast('Product is now available to brokers.', 'success');
       setModalOpen(false);
       setEditing(null);
     } catch (error) {
@@ -106,12 +142,13 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
     }
   };
 
-  const deleteProduct = async (product: Product) => {
+  const deleteProduct = async (product: Product, afterDeleteHref?: string) => {
     if (!window.confirm(`Remove "${product.name}" from your listings?`)) return;
     try {
       await store.deleteProduct(product.id);
       await store.addActivity('product', `${currentSeller} removed ${product.name}.`);
       store.showToast('Product removed.', 'success');
+      if (afterDeleteHref) router.push(afterDeleteHref);
     } catch (error) {
       store.showToast(error instanceof Error ? error.message : 'Could not remove product.', 'error');
     }
@@ -251,7 +288,11 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
                   <tbody>
                     {visibleProducts.length ? visibleProducts.map((product) => (
                       <tr key={product.id}>
-                        <td><ProductCell product={product} /></td>
+                        <td>
+                          <Link className="table-product-link" href={`/seller/product/${product.id}`} aria-label={`Open ${product.name} details`}>
+                            <ProductCell product={product} />
+                          </Link>
+                        </td>
                         <td>{product.category}</td>
                         <td>{formatCurrency(product.mrp)}</td>
                         <td>{formatCurrency(product.commission)}</td>
@@ -373,9 +414,201 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
             </section>
           </>
         )}
+
+        {section === 'product' && (
+          activeProduct ? (
+            <>
+              <section className="page-heading product-detail-heading">
+                <Link className="btn-dashboard btn-dashboard-secondary" href="/seller/products"><BackIcon /> Back to products</Link>
+                <div className="product-detail-actions">
+                  <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={() => { setEditing(activeProduct); setModalOpen(true); }}><EditIcon /> Edit product</button>
+                  <button className="btn-dashboard btn-dashboard-danger" type="button" onClick={() => deleteProduct(activeProduct, '/seller/products')}><TrashIcon /> Delete</button>
+                </div>
+              </section>
+
+              <div className="product-detail-layout">
+                <div className="product-detail-gallery">
+                  <ProductImageCarousel product={activeProduct} key={activeProduct.id} />
+                </div>
+                <div className="product-detail-info">
+                  <SellerProductDetailForm
+                    product={activeProduct}
+                    onSave={(values) => updateExistingProduct(activeProduct, values)}
+                    onManagePhotos={() => { setEditing(activeProduct); setModalOpen(true); }}
+                    showToast={store.showToast}
+                  />
+                </div>
+              </div>
+
+              <section className="metrics-grid seller-product-metrics" aria-label="Product sales summary">
+                <Metric icon={<SaleIcon size={18} />} value={activeProductSales.length} label="Orders for this product" />
+                <Metric icon={<GridIcon />} value={activeProductUnitsSold} label="Units sold" />
+                <Metric icon={<ChartIcon size={18} />} value={formatCurrency(activeProductOrderValue)} label="Order value" />
+                <Metric icon={<PackageIcon size={18} />} value={activeProduct.stock} label="Current stock" />
+              </section>
+
+              <section className="dashboard-card">
+                <header className="dashboard-card-header">
+                  <div>
+                    <h2 className="dashboard-card-title">Recent orders</h2>
+                    <p className="dashboard-card-subtitle">Orders placed by brokers for this product</p>
+                  </div>
+                  <Link className="btn-dashboard btn-dashboard-secondary" href="/seller/orders">View all orders</Link>
+                </header>
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead><tr><th>Broker</th><th>Customer</th><th>Quantity</th><th>Total</th><th>Date</th></tr></thead>
+                    <tbody>
+                      {activeProductSales.length ? activeProductSales.slice(0, 6).map((order) => (
+                        <tr key={order.id}>
+                          <td>{order.broker}</td>
+                          <td><span className="cell-title">{order.customer}</span><br /><span className="cell-meta">{order.customerPhone || 'No phone added'}</span></td>
+                          <td>{order.quantity}</td>
+                          <td>{formatCurrency(order.total)}</td>
+                          <td>{formatDate(order.createdAt)}</td>
+                        </tr>
+                      )) : <EmptyRow colSpan={5} title="No orders yet" text="Broker orders for this product will appear here." />}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </>
+          ) : (
+            <div className="empty-state">
+              <strong>Product not found</strong>
+              <p>This product may have been removed or is not part of this seller account.</p>
+              <Link className="btn-dashboard btn-dashboard-secondary" href="/seller/products" style={{ marginTop: '16px' }}>Back to products</Link>
+            </div>
+          )
+        )}
       </DashboardShell>
       <ProductModal open={modalOpen} product={editing} onClose={() => { setModalOpen(false); setEditing(null); }} onSave={saveProduct} showToast={store.showToast} />
       <ToastRegion toasts={store.toasts} />
     </>
   );
+}
+
+function SellerProductDetailForm({
+  product,
+  onSave,
+  onManagePhotos,
+  showToast
+}: {
+  product: Product;
+  onSave: (values: ProductSaveValues) => Promise<boolean>;
+  onManagePhotos: () => void;
+  showToast: (message: string, type?: 'success' | 'error' | '') => void;
+}) {
+  const [values, setValues] = useState(() => productToDetailForm(product));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setValues(productToDetailForm(product));
+  }, [product]);
+
+  const update = (key: keyof ReturnType<typeof productToDetailForm>, value: string) => {
+    setValues((current) => ({ ...current, [key]: value }));
+  };
+
+  const isDirty =
+    values.name !== product.name ||
+    values.category !== product.category ||
+    Number(values.mrp) !== Number(product.mrp) ||
+    Number(values.commission) !== Number(product.commission) ||
+    Number(values.stock) !== Number(product.stock) ||
+    values.description !== (product.description || '');
+
+  const reset = () => setValues(productToDetailForm(product));
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const cleaned: ProductSaveValues = {
+      name: values.name.trim(),
+      category: values.category.trim(),
+      mrp: Number(values.mrp),
+      commission: Number(values.commission),
+      stock: Number(values.stock),
+      description: values.description.trim()
+    };
+
+    if (!cleaned.name || !cleaned.category || cleaned.mrp <= 0 || cleaned.commission < 0 || cleaned.stock < 0) {
+      showToast('Please complete all required product fields.', 'error');
+      return;
+    }
+    if (cleaned.commission > cleaned.mrp) {
+      showToast('Commission cannot be higher than MRP.', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await onSave(cleaned);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className="seller-product-edit-form" onSubmit={submit}>
+      <div className="seller-product-edit-summary">
+        <div className="seller-product-edit-status">
+          <p className="catalog-seller">{product.category}</p>
+          <StockBadge stock={product.stock} />
+        </div>
+        <h1 className="page-title product-detail-title">{product.name}</h1>
+        <div className="seller-product-edit-meta">
+          <span>ID {product.id.slice(-8).toUpperCase()}</span>
+          <span>Listed {formatDate(product.createdAt)}</span>
+        </div>
+      </div>
+
+      <div className="form-grid seller-product-edit-grid">
+        <label className="form-group full">
+          <span className="form-label">Product name *</span>
+          <input className="form-control" value={values.name} onChange={(event) => update('name', event.target.value)} required maxLength={80} />
+        </label>
+        <label className="form-group">
+          <span className="form-label">Category *</span>
+          <select className="form-control" value={values.category} onChange={(event) => update('category', event.target.value)} required>
+            <option value="">Choose category</option>
+            {PRODUCT_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+          </select>
+        </label>
+        <label className="form-group">
+          <span className="form-label">Available stock *</span>
+          <input className="form-control" value={values.stock} onChange={(event) => update('stock', event.target.value)} type="number" required min="0" step="1" />
+        </label>
+        <label className="form-group">
+          <span className="form-label">MRP (Rs) *</span>
+          <input className="form-control" value={values.mrp} onChange={(event) => update('mrp', event.target.value)} type="number" required min="1" step="1" />
+        </label>
+        <label className="form-group">
+          <span className="form-label">Broker commission (Rs) *</span>
+          <input className="form-control" value={values.commission} onChange={(event) => update('commission', event.target.value)} type="number" required min="0" step="1" />
+        </label>
+        <label className="form-group full">
+          <span className="form-label">Description</span>
+          <textarea className="form-control" value={values.description} onChange={(event) => update('description', event.target.value)} maxLength={300} placeholder="Add useful product details for brokers" />
+        </label>
+      </div>
+
+      <div className="seller-product-edit-actions">
+        <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onManagePhotos}><EditIcon /> Edit photos</button>
+        <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={reset} disabled={!isDirty || saving}>Reset</button>
+        <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={!isDirty || saving}>{saving ? 'Saving...' : 'Save details'}</button>
+      </div>
+    </form>
+  );
+}
+
+function productToDetailForm(product: Product) {
+  return {
+    name: product.name || '',
+    category: product.category || '',
+    mrp: String(product.mrp ?? ''),
+    commission: String(product.commission ?? ''),
+    stock: String(product.stock ?? ''),
+    description: product.description || ''
+  };
 }
