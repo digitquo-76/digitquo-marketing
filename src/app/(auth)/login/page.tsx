@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, ShieldIcon } from '../../../components/ui/icons';
 import { routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
+import { ensureUserProfile } from '../../../lib/profile';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,14 +22,13 @@ export default function LoginPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user || !mounted) return;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role,onboarding_complete')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profile && mounted) {
-        router.replace(routeForProfile(profile));
+      try {
+        const profile = await ensureUserProfile(session.user);
+        if (mounted) router.replace(routeForProfile(profile));
+      } catch (profileError) {
+        if (mounted) {
+          setError(profileError instanceof Error ? profileError.message : 'Could not prepare your account profile.');
+        }
       }
     }
 
@@ -55,20 +55,13 @@ export default function LoginPage() {
       return;
     }
 
-    // Fetch user profile to determine routing
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role,onboarding_complete')
-      .eq('id', authData.user.id)
-      .single();
-
-    if (profileError || !profile) {
+    try {
+      const profile = await ensureUserProfile(authData.user);
+      router.push(routeForProfile(profile));
+    } catch (profileError) {
       setSubmitting(false);
-      setError('Your account profile is not ready. Contact support before signing in again.');
-      return;
+      setError(profileError instanceof Error ? profileError.message : 'Could not prepare your account profile.');
     }
-
-    router.push(routeForProfile(profile));
   };
 
   const handleGoogleLogin = async () => {

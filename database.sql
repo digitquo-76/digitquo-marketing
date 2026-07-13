@@ -204,6 +204,9 @@ on public.profiles for select
 using (id = auth.uid() or public.current_profile_role() = 'admin');
 
 drop policy if exists "profiles insert own" on public.profiles;
+create policy "profiles insert own"
+on public.profiles for insert
+with check (id = auth.uid() and role in ('seller', 'broker'));
 
 drop policy if exists "profiles update own display name or admin" on public.profiles;
 drop policy if exists "profiles complete own seller broker profile" on public.profiles;

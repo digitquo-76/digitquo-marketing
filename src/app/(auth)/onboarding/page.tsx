@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, HomeIcon, UsersIcon } from '../../../components/ui/icons';
 import { routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
+import { ensureUserProfile } from '../../../lib/profile';
 
 type Role = 'seller' | 'broker';
 
@@ -31,19 +32,17 @@ export default function OnboardingPage() {
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (!mounted) return;
-
-      if (profileError || !profile) {
-        setError('Your profile was not created yet. Please sign out and try again.');
+      let profile;
+      try {
+        profile = await ensureUserProfile(session.user);
+      } catch (profileError) {
+        if (!mounted) return;
+        setError(profileError instanceof Error ? profileError.message : 'Your profile could not be prepared.');
         setLoading(false);
         return;
       }
+
+      if (!mounted) return;
 
       if (profile.onboarding_complete) {
         router.replace(routeForProfile(profile));

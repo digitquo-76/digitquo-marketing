@@ -5,6 +5,7 @@ import { Product, Sale, Activity, Toast, Claim } from '../types';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import { ensureUserProfile } from './profile';
 
 type Profile = {
   id: string;
@@ -46,9 +47,12 @@ export function useDigitQuoStore() {
 
       let currentProfile = null;
       if (currentUser) {
-        const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-        currentProfile = data;
-        if (mounted) setProfile(currentProfile);
+        try {
+          currentProfile = await ensureUserProfile(currentUser);
+          if (mounted) setProfile(currentProfile);
+        } catch (error) {
+          if (mounted) showToast(error instanceof Error ? error.message : 'Could not prepare your profile.', 'error');
+        }
       }
 
       const [productsRes, salesRes, claimsRes, activityRes] = await Promise.all([
@@ -75,8 +79,12 @@ export function useDigitQuoStore() {
       if (mounted) {
         setUser(session?.user || null);
         if (session?.user) {
-          const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-          setProfile(data);
+          try {
+            const data = await ensureUserProfile(session.user);
+            setProfile(data);
+          } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Could not prepare your profile.', 'error');
+          }
         } else {
           setProfile(null);
         }
