@@ -305,7 +305,7 @@ export function useDigitQuoStore() {
     user, profile, loading,
     currentSellerName, currentBrokerName,
     addProduct, updateProduct, deleteProduct,
-    addSale, placeOrder, completePaidOrder, addClaim, updateClaimStatus, addActivity, updateProfile,
+    completePaidOrder, addClaim, updateClaimStatus, addActivity, updateProfile,
     showToast, logout
   };
 }
@@ -333,6 +333,8 @@ function mapSaleToDB(s: Sale) {
     total: s.total,
     points: s.points,
     broker: s.broker,
+    razorpay_order_id: s.razorpayOrderId || null,
+    razorpay_payment_id: s.razorpayPaymentId || null,
     created_at: s.createdAt
   };
 }
@@ -351,6 +353,8 @@ function mapSaleFromDB(s: any): Sale {
     total: s.total,
     points: s.points,
     broker: s.broker,
+    razorpayOrderId: s.razorpay_order_id || null,
+    razorpayPaymentId: s.razorpay_payment_id || null,
     createdAt: s.created_at
   };
 }

@@ -13,8 +13,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [showCreateAccountPrompt, setShowCreateAccountPrompt] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -43,6 +45,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNotice('');
     setShowCreateAccountPrompt(false);
     setSubmitting(true);
 
@@ -70,6 +73,8 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
+    setError('');
+    setNotice('');
     setShowCreateAccountPrompt(false);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -78,6 +83,31 @@ export default function LoginPage() {
       },
     });
     if (error) setError(error.message);
+  };
+
+  const handlePasswordReset = async () => {
+    setError('');
+    setNotice('');
+    setShowCreateAccountPrompt(false);
+
+    const resetEmail = email.trim();
+    if (!resetEmail) {
+      setError('Enter your email address first, then request a password reset link.');
+      return;
+    }
+
+    setResetSubmitting(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: getAuthCallbackUrl(),
+    });
+    setResetSubmitting(false);
+
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+
+    setNotice('Password reset link sent. Check your email and open the link to set a new password.');
   };
 
   return (
@@ -138,6 +168,7 @@ export default function LoginPage() {
                 )}
               </div>
             )}
+            {notice && <div className="auth-alert" role="status">{notice}</div>}
             <div className="auth-field-group">
               <label className="auth-label" htmlFor="email">Email address</label>
               <input
@@ -156,7 +187,9 @@ export default function LoginPage() {
             <div className="auth-field-group">
               <div className="auth-field-row">
                 <label className="auth-label" htmlFor="password">Password</label>
-                <a href="#" className="auth-link">Forgot password?</a>
+                <button type="button" className="auth-link auth-link-button" onClick={handlePasswordReset} disabled={resetSubmitting}>
+                  {resetSubmitting ? 'Sending reset...' : 'Forgot password?'}
+                </button>
               </div>
               <input
                 id="password"

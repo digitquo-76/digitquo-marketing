@@ -17,6 +17,8 @@ type SaleRow = {
   total: number;
   points: number;
   broker: string;
+  razorpay_order_id: string | null;
+  razorpay_payment_id: string | null;
   created_at: string;
 };
 
@@ -24,6 +26,8 @@ type ProfileRow = {
   email: string;
   display_name: string | null;
   business_name: string | null;
+  role?: string;
+  onboarding_complete?: boolean | null;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -67,10 +71,62 @@ export async function POST(request: NextRequest) {
 
   const quantity = Number(order.quantity || 0);
   const productId = cleanString(order.productId);
+  const customer = cleanString(order.customer);
+  const customerPhone = cleanString(order.customerPhone);
+  const customerAddress = cleanString(order.customerAddress);
+  const orderNotes = cleanString(order.orderNotes);
+
+  if (!productId || !Number.isInteger(quantity) || quantity < 1) {
+    return NextResponse.json({ error: 'Product and valid quantity are required.' }, { status: 400 });
+  }
+
+  if (!customer || !customerPhone || !customerAddress) {
+    return NextResponse.json({ error: 'Customer name, phone, and address are required.' }, { status: 400 });
+  }
+
   const userClient = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { persistSession: false }
   });
+
+  const { data: userData, error: userError } = await userClient.auth.getUser();
+  if (userError || !userData.user) {
+    return NextResponse.json({ error: 'Broker authorization is invalid.' }, { status: 401 });
+  }
+
+  const { data: brokerProfile, error: brokerProfileError } = await userClient
+    .from('profiles')
+    .select('email, display_name, business_name, role, onboarding_complete')
+    .eq('id', userData.user.id)
+    .single<ProfileRow>();
+
+  if (brokerProfileError || !brokerProfile || brokerProfile.role !== 'broker' || !brokerProfile.onboarding_complete) {
+    return NextResponse.json({ error: 'Only onboarded brokers can complete paid orders.' }, { status: 403 });
+  }
+
+  const brokerName = cleanString(brokerProfile.display_name || brokerProfile.email);
+  if (!brokerName) {
+    return NextResponse.json({ error: 'Broker profile is missing a display name or email.' }, { status: 400 });
+  }
+
+  const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: { persistSession: false }
+  });
+
+  const { data: existingSale } = await serviceClient
+    .from('sales')
+    .select('*')
+    .eq('razorpay_payment_id', razorpayPaymentId)
+    .limit(1)
+    .maybeSingle<SaleRow>();
+
+  if (existingSale) {
+    if (existingSale.broker !== brokerName) {
+      return NextResponse.json({ error: 'This payment has already been used for another broker order.' }, { status: 409 });
+    }
+
+    return NextResponse.json({ sale: existingSale });
+  }
 
   const razorpayOrder = await fetchRazorpayResource(`orders/${razorpayOrderId}`);
   const razorpayPayment = await fetchRazorpayResource(`payments/${razorpayPaymentId}`);
@@ -106,28 +162,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Payment amount does not match the current order total.' }, { status: 400 });
   }
 
-  const { data: sale, error: saleError } = await userClient.rpc('place_order', {
-    p_order_id: `ord_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+  const newOrderId = `ord_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const { data: sale, error: saleError } = await serviceClient.rpc('place_paid_order', {
+    p_order_id: newOrderId,
     p_product_id: productId,
-    p_customer: cleanString(order.customer),
-    p_customer_phone: cleanString(order.customerPhone),
-    p_customer_address: cleanString(order.customerAddress),
-    p_order_notes: cleanString(order.orderNotes),
-    p_quantity: quantity
+    p_customer: customer,
+    p_customer_phone: customerPhone,
+    p_customer_address: customerAddress,
+    p_order_notes: orderNotes,
+    p_quantity: quantity,
+    p_broker: brokerName,
+    p_razorpay_order_id: razorpayOrderId,
+    p_razorpay_payment_id: razorpayPaymentId
   }).single<SaleRow>();
 
   if (saleError || !sale) {
     return NextResponse.json({ error: saleError?.message || 'Payment succeeded, but the order could not be saved.' }, { status: 500 });
   }
 
-  const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: { persistSession: false }
-  });
-
-  await Promise.all([
-    sendSellerOrderEmail(serviceClient, sale),
-    sendBrokerInvoiceEmail(serviceClient, sale, razorpayPaymentId, razorpayOrderId)
-  ]);
+  if (sale.id === newOrderId) {
+    await Promise.all([
+      sendSellerOrderEmail(serviceClient, sale),
+      sendBrokerInvoiceEmail(serviceClient, sale, razorpayPaymentId, razorpayOrderId)
+    ]);
+  }
 
   return NextResponse.json({ sale });
 }

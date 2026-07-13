@@ -11,7 +11,7 @@ import { DashboardShell } from './DashboardShell';
 import { EmptyRow, Metric, ProductImage } from './Shared';
 import { OrderModal } from './Modals';
 import { ToastRegion } from '../ui/ToastRegion';
-import { GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon, StarIcon } from '../ui/icons';
+import { GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
 type BrokerSection = 'overview' | 'catalog' | 'sales' | 'rewards' | 'product';
 
@@ -88,16 +88,11 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
   const availablePoints = totalPointsEarned - pointsClaimed;
 
   const activeProduct = productId ? store.products.find((p) => p.id === productId) : null;
+  const activeProductInStock = Boolean(activeProduct && activeProduct.stock > 0);
   const relatedProducts = activeProduct ? available.filter(p => p.id !== activeProduct.id && p.category === activeProduct.category).slice(0, 5) : [];
   if (relatedProducts.length < 5 && activeProduct) {
     relatedProducts.push(...available.filter(p => p.id !== activeProduct.id && !relatedProducts.includes(p)).slice(0, 5 - relatedProducts.length));
   }
-
-  const mockReviews = [
-    { id: 1, author: 'Jane D.', rating: 5, date: '2 days ago', content: 'Absolutely love this product! The quality is amazing and it arrived exactly as described. Highly recommended.' },
-    { id: 2, author: 'Mark T.', rating: 4, date: '1 week ago', content: 'Very good overall. The packaging could be slightly better but the item itself is solid and works perfectly.' },
-    { id: 3, author: 'Sarah W.', rating: 5, date: '2 weeks ago', content: 'Exceeded my expectations. Will definitely be buying more from this seller in the future!' }
-  ];
 
   const placeOrder = async ({ productId, customer, customerPhone, customerAddress, orderNotes, quantity }: any) => {
     const product = store.products.find((p) => p.id === productId);
@@ -393,23 +388,16 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
           activeProduct ? (
             <>
               <section className="page-heading" style={{ marginBottom: '20px' }}>
-                <Link className="btn-dashboard btn-dashboard-secondary" href="/broker/catalog">← Back to Catalog</Link>
+                <Link className="btn-dashboard btn-dashboard-secondary" href="/broker/catalog">Back to catalog</Link>
               </section>
 
               <div className="product-detail-layout">
                 <div className="product-detail-image-wrap">
-                  {activeProduct.image ? <img src={activeProduct.image} alt={activeProduct.name} /> : <div className="catalog-visual">No Image</div>}
+                  <ProductImage product={activeProduct} />
                 </div>
                 <div className="product-detail-info">
                   <p className="catalog-seller">{activeProduct.seller}</p>
                   <h1 className="page-title" style={{ fontSize: '2rem', marginBottom: '10px' }}>{activeProduct.name}</h1>
-                  
-                  <div className="product-rating" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', color: '#f59e0b' }}>
-                      <StarIcon /><StarIcon /><StarIcon /><StarIcon /><StarIcon />
-                    </div>
-                    <span style={{ color: '#70657e', fontSize: '0.85rem' }}>4.8 out of 5 (124 ratings)</span>
-                  </div>
 
                   <div className="catalog-meta" style={{ padding: '16px 0', borderTop: '1px solid #e8e1f1', borderBottom: '1px solid #e8e1f1', marginBottom: '20px' }}>
                     <div className="catalog-price-stack">
@@ -419,43 +407,25 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                   </div>
 
                   <div style={{ marginBottom: '24px' }}>
-                    <span style={{ color: '#0f9f6e', fontWeight: 600, fontSize: '1.1rem', display: 'block', marginBottom: '8px' }}>In Stock</span>
+                    <span style={{ color: activeProductInStock ? '#0f9f6e' : '#dc2626', fontWeight: 600, fontSize: '1.1rem', display: 'block', marginBottom: '8px' }}>{activeProductInStock ? 'In stock' : 'Out of stock'}</span>
                     <span style={{ color: '#70657e', fontSize: '0.9rem' }}>{activeProduct.stock} units available. Ships from {activeProduct.seller}.</span>
                   </div>
 
                   <div style={{ marginBottom: '30px' }}>
                     <h3 style={{ fontSize: '1rem', marginBottom: '8px' }}>About this item</h3>
-                    <p className="page-description" style={{ margin: 0, fontSize: '0.95rem' }}>{activeProduct.description || 'Premium quality product available for immediate dispatch. Comes with standard manufacturer warranty where applicable.'}</p>
+                    <p className="page-description" style={{ margin: 0, fontSize: '0.95rem' }}>{activeProduct.description || 'No description has been added by the seller yet.'}</p>
                   </div>
 
-                  <button className="btn-dashboard btn-dashboard-primary" type="button" style={{ width: '100%', maxWidth: '300px', height: '48px', fontSize: '1rem' }} onClick={() => setOrderProduct(activeProduct)}>Place order</button>
+                  <button className="btn-dashboard btn-dashboard-primary" type="button" style={{ width: '100%', maxWidth: '300px', height: '48px', fontSize: '1rem' }} onClick={() => setOrderProduct(activeProduct)} disabled={!activeProductInStock}>{activeProductInStock ? 'Place order' : 'Unavailable'}</button>
                 </div>
               </div>
 
               <section className="dashboard-card product-reviews" style={{ marginTop: '30px', padding: '24px' }}>
-                <h2 className="dashboard-card-title" style={{ fontSize: '1.3rem', marginBottom: '20px' }}>Customer Reviews</h2>
-                <div className="reviews-list">
-                  {mockReviews.map((review) => (
-                    <div className="review-item" key={review.id} style={{ borderBottom: '1px solid #e8e1f1', paddingBottom: '20px', marginBottom: '20px' }}>
-                      <div className="review-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: '#f4efff', borderRadius: '50%', color: '#6d28d9', fontWeight: 'bold' }}>
-                          {review.author.charAt(0)}
-                        </div>
-                        <div>
-                          <span className="review-author" style={{ fontWeight: 600, display: 'block', fontSize: '0.9rem' }}>{review.author}</span>
-                        </div>
-                      </div>
-                      <div className="review-rating" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <div style={{ display: 'flex' }}>
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <span key={i} style={{ color: i < review.rating ? '#f59e0b' : '#e5e7eb', width: '16px', display: 'inline-block' }}><StarIcon /></span>
-                          ))}
-                        </div>
-                        <span className="review-date" style={{ color: '#70657e', fontSize: '0.8rem' }}>Reviewed on {review.date}</span>
-                      </div>
-                      <p className="review-content" style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>{review.content}</p>
-                    </div>
-                  ))}
+                <h2 className="dashboard-card-title" style={{ fontSize: '1.3rem', marginBottom: '20px' }}>Order checklist</h2>
+                <div className="order-checklist">
+                  <div><strong>Confirm customer details</strong><p>Review the customer name, phone number, and delivery address before payment.</p></div>
+                  <div><strong>Check quantity</strong><p>Make sure the requested quantity fits available stock and customer demand.</p></div>
+                  <div><strong>Add useful notes</strong><p>Include size, color, timing, or packing instructions for the seller when needed.</p></div>
                 </div>
               </section>
 

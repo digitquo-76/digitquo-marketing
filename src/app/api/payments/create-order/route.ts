@@ -8,6 +8,11 @@ type ProductRow = {
   stock: number;
 };
 
+type ProfileRow = {
+  role: string;
+  onboarding_complete: boolean | null;
+};
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
@@ -41,6 +46,21 @@ export async function POST(request: NextRequest) {
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { persistSession: false }
   });
+
+  const { data: userData, error: userError } = await userClient.auth.getUser();
+  if (userError || !userData.user) {
+    return NextResponse.json({ error: 'Broker authorization is invalid.' }, { status: 401 });
+  }
+
+  const { data: profile, error: profileError } = await userClient
+    .from('profiles')
+    .select('role, onboarding_complete')
+    .eq('id', userData.user.id)
+    .single<ProfileRow>();
+
+  if (profileError || !profile || profile.role !== 'broker' || !profile.onboarding_complete) {
+    return NextResponse.json({ error: 'Only onboarded brokers can create payment orders.' }, { status: 403 });
+  }
 
   const { data: product, error: productError } = await userClient
     .from('products')

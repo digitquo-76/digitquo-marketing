@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LogoMark, TwitterIcon, LinkedInIcon, InstagramIcon } from '../ui/icons';
+import { LogoMark } from '../ui/icons';
 
 export function Footer() {
   return (
@@ -7,20 +7,15 @@ export function Footer() {
       <div className="container">
         <div className="footer-grid">
           <div className="footer-brand">
-            <a href="#" className="logo">
+            <Link href="/" className="logo">
               <LogoMark />
               <span className="logo-text">DigitQuo Store</span>
-            </a>
+            </Link>
             <p className="footer-tagline">The smarter way to market and sell. Connecting sellers and brokers on one platform.</p>
-            <div className="footer-socials">
-              <a href="#" className="social-link" aria-label="Twitter"><TwitterIcon /></a>
-              <a href="#" className="social-link" aria-label="LinkedIn"><LinkedInIcon /></a>
-              <a href="#" className="social-link" aria-label="Instagram"><InstagramIcon /></a>
-            </div>
           </div>
-          <FooterCol title="Product" items={[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#', 'Pricing'], ['#', 'API']]} />
-          <FooterCol title="Company" items={[['#', 'About'], ['#', 'Careers'], ['#', 'Blog'], ['#contact', 'Contact']]} />
-          <FooterCol title="Legal" items={[['#', 'Privacy Policy'], ['#', 'Terms of Service'], ['#', 'Cookie Policy']]} />
+          <FooterCol title="Product" items={[['/#features', 'Features'], ['/#how-it-works', 'How It Works'], ['/register?role=seller', 'Seller signup'], ['/register?role=broker', 'Broker signup']]} />
+          <FooterCol title="Company" items={[['/#roles', 'Roles'], ['/login', 'Login'], ['/register', 'Create account'], ['mailto:sales@digitquo.in?subject=DigitQuo%20Store%20sales%20inquiry', 'Contact sales']]} />
+          <FooterCol title="Legal" items={[['/privacy', 'Privacy Policy'], ['/terms', 'Terms of Service'], ['/cookies', 'Cookie Policy']]} />
         </div>
         <div className="footer-bottom">
           <p>&copy; 2026 DigitQuo Store. All rights reserved.</p>
@@ -35,7 +30,7 @@ function FooterCol({ title, items }: { title: string, items: readonly [string, s
   return (
     <div className="footer-col">
       <h4 className="footer-heading">{title}</h4>
-      <ul>{items.map(([href, label]) => <li key={label}><a href={href}>{label}</a></li>)}</ul>
+      <ul>{items.map(([href, label]) => <li key={label}>{href.startsWith('/') ? <Link href={href}>{label}</Link> : <a href={href}>{label}</a>}</li>)}</ul>
     </div>
   );
 }

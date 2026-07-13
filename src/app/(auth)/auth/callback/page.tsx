@@ -31,6 +31,7 @@ function AuthCallback() {
       try {
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
+        const authType = hashParams.get('type') || searchParams.get('type');
         if (accessToken && refreshToken) {
           const { error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -47,6 +48,11 @@ function AuthCallback() {
 
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) throw userError || new Error('Sign in did not return a user.');
+
+        if (authType === 'recovery') {
+          if (mounted) router.replace('/reset-password');
+          return;
+        }
 
         const profile = await ensureUserProfile(user);
         if (mounted) router.replace(routeForProfile(profile));

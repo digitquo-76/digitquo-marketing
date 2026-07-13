@@ -8,6 +8,8 @@ DigitQuo Store is a Next.js marketplace app for sellers, brokers, and platform a
 - `/seller` - Seller workspace for managing products, inventory, and sales activity.
 - `/broker` - Broker workspace for browsing seller inventory, placing customer orders, and claiming rewards.
 - `/admin` - Owner/admin workspace for monitoring marketplace activity, products, transactions, and payout claims.
+- `/reset-password` - Password recovery page used after Supabase reset links.
+- `/privacy`, `/terms`, `/cookies` - Public legal pages linked from the footer.
 
 ## Project Structure
 
@@ -46,7 +48,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
 ```
 
-Apply `database.sql` in the Supabase SQL editor before signing users up.
+Apply `database.sql` in the Supabase SQL editor before signing users up or deploying schema changes.
 `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL` are used by the server routes that email sellers and broker invoices after paid orders.
 `NEXT_PUBLIC_RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` are used to create and verify Razorpay payments before broker orders are saved.
 `NEXT_PUBLIC_SITE_URL` should be set to the production domain, for example `https://digitquo.in`, so auth redirects return to the custom domain.
@@ -79,5 +81,7 @@ npm.cmd run start -- --port 3002
 
 - Next.js generates the browser document; there is no handwritten `.html` source file.
 - Dashboard data is stored in Supabase with Row Level Security enabled by `database.sql`.
+- Broker sales are created only by the server-side paid-order route after Razorpay verification. The schema stores Razorpay order/payment IDs to make retries idempotent.
 - Admin routes include `noindex` response headers and client-side role redirects. Supabase RLS remains the source of truth for data access.
 - Create the first admin profile manually in Supabase after registering the owner account, then keep public registration limited to seller and broker roles.
+- Review the legal page copy with counsel before launch.

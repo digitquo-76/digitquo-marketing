@@ -49,10 +49,10 @@ export function Navbar() {
   return (
     <nav id="navbar" className={`navbar${scrolled ? ' scrolled' : ''}`}>
       <div className="container nav-container">
-        <a href="#" className="logo" id="logo">
+        <Link href="/" className="logo" id="logo" onClick={closeMobile}>
           <LogoMark />
           <span className="logo-text">DigitQuo Store</span>
-        </a>
+        </Link>
         <ul className={`nav-links${mobileOpen ? ' mobile-open' : ''}`} id="nav-links">
           {[
             ['features', 'Features'],

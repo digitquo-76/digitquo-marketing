@@ -291,6 +291,17 @@
   text-decoration: underline;
 }
 
+.auth-link-button {
+  width: auto;
+  padding: 0;
+  text-align: left;
+}
+
+.auth-link-button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .auth-submit {
   width: 100%;
   min-height: 52px;

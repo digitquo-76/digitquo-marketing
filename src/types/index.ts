@@ -25,6 +25,8 @@ export interface Sale {
   total: number;
   points: number;
   broker: string;
+  razorpayOrderId?: string | null;
+  razorpayPaymentId?: string | null;
   createdAt: string;
 }
 

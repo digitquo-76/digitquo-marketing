@@ -32,7 +32,10 @@ export function formatNumber(num: number): string {
 }
 
 export function safeImageUrl(url: string): string {
-  return /^(https?:\/\/|data:image\/)/i.test(url) ? url : '';
+  const value = String(url || '').trim();
+  if (/^https?:\/\//i.test(value)) return value;
+  if (/^data:image\/(png|jpe?g|gif|webp);base64,/i.test(value)) return value;
+  return '';
 }
 
 export function getAuthCallbackUrl() {
