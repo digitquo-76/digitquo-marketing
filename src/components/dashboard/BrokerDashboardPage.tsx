@@ -190,7 +190,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
       } catch {
         // The claim is saved; activity is only an admin-facing notification.
       }
-      let adminEmailSent = false;
+      let adminEmailFailed = true;
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData.session?.access_token;
@@ -204,17 +204,16 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
             body: JSON.stringify({ claimId: claim.id })
           });
           const result = await response.json().catch(() => null);
-          adminEmailSent = response.ok && result?.sent === true;
+          adminEmailFailed = !response.ok || result?.sent !== true;
         }
       } catch {
         // The claim is saved; email delivery is handled separately.
       }
-      store.showToast(
-        adminEmailSent
-          ? `Claimed ${formatCurrency(availablePoints)} commission. Admin has been emailed with the payout details.`
-          : `Claimed ${formatCurrency(availablePoints)} commission. Admin email could not be confirmed; please contact admin if needed.`,
-        adminEmailSent ? 'success' : 'error'
-      );
+      if (adminEmailFailed) {
+        store.showToast('Email failed. Contact support team.', 'error');
+      } else {
+        store.showToast(`Claimed ${formatCurrency(availablePoints)} commission. You will receive payment within 24 hrs.`, 'success');
+      }
     } catch (error) {
       store.showToast(error instanceof Error ? error.message : 'Could not create payout claim.', 'error');
     }

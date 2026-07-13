@@ -282,7 +282,8 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
                 </div>
               </header>
               {pendingClaims.length > 0 && (
-                <div className="dashboard-card-body" style={{ paddingBottom: 0 }}>
+                <div className="dashboard-card-body active-claims-section" style={{ paddingBottom: 0 }}>
+                  <div className="section-divider"><span>Active claims</span></div>
                   {pendingClaims.slice(0, 3).map((claim) => (
                     <div className="claim-message" key={claim.id}>
                       <strong>{claim.broker} requested {formatCurrency(claim.points)} commission</strong>

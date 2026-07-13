@@ -734,6 +734,29 @@ a {
   font-size: 0.8rem;
 }
 
+.active-claims-section {
+  display: grid;
+  gap: 14px;
+}
+
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--dashboard-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.section-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--dashboard-border);
+}
+
 .catalog-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
