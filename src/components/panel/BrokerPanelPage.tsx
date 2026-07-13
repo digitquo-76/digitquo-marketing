@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { Product } from '../../types';
-import { formatCurrency, formatDate, routeForRole } from '../../lib/utils';
+import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { EmptyRow, Metric, ProductImage } from './Shared';
 import { SaleModal } from './Modals';
@@ -27,16 +27,16 @@ export function BrokerPanelPage({ section, productId }: { section: BrokerSection
       router.replace('/login');
       return;
     }
-    if (!store.profile?.role) {
-      router.replace('/login');
+    if (!store.profile?.role || !isProfileComplete(store.profile)) {
+      router.replace(routeForProfile(store.profile));
       return;
     }
     if (store.profile.role !== 'broker') {
-      router.replace(routeForRole(store.profile.role));
+      router.replace(routeForProfile(store.profile));
     }
-  }, [router, store.loading, store.profile?.role, store.user]);
+  }, [router, store.loading, store.profile, store.user]);
 
-  if (store.loading || !store.user || store.profile?.role !== 'broker') return <div style={{ padding: '40px' }}>Loading workspace...</div>;
+  if (store.loading || !store.user || store.profile?.role !== 'broker' || !isProfileComplete(store.profile)) return <div style={{ padding: '40px' }}>Loading workspace...</div>;
 
   const currentBroker = store.currentBrokerName;
 
@@ -122,7 +122,8 @@ export function BrokerPanelPage({ section, productId }: { section: BrokerSection
           ['/broker', 'Overview', <GridIcon key="grid" />],
           ['/broker/catalog', 'Product catalog', <SearchIcon size={18} key="search" />],
           ['/broker/sales', 'My sales', <SaleIcon key="sale" />],
-          ['/broker/rewards', 'Rewards', <WalletIcon key="wallet" />]
+          ['/broker/rewards', 'Rewards', <WalletIcon key="wallet" />],
+          ['/profile', 'My profile', <UsersIcon size={18} key="profile" />]
         ]}
         user={{ initials: currentBroker.slice(0, 2).toUpperCase(), name: currentBroker, role: 'Broker account' }}
         title="Broker workspace"

@@ -40,3 +40,17 @@ export function routeForRole(role: string) {
   if (role === 'broker') return '/broker';
   return '/seller';
 }
+
+export type ProfileRouteState = {
+  role?: string | null;
+  onboarding_complete?: boolean | null;
+};
+
+export function isProfileComplete(profile?: ProfileRouteState | null) {
+  return Boolean(profile?.onboarding_complete || profile?.role === 'admin');
+}
+
+export function routeForProfile(profile?: ProfileRouteState | null) {
+  if (!profile?.role || !isProfileComplete(profile)) return '/onboarding';
+  return routeForRole(profile.role);
+}

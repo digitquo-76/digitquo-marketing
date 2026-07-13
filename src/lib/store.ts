@@ -14,6 +14,7 @@ type Profile = {
   business_name?: string | null;
   business_type?: string | null;
   market?: string | null;
+  onboarding_complete?: boolean | null;
 };
 
 export function useDigitQuoStore() {
@@ -167,6 +168,20 @@ export function useDigitQuoStore() {
     }
   };
 
+  const updateProfile = async (values: Partial<Profile>) => {
+    if (!user) throw new Error('You need to be signed in to update your profile.');
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(values)
+      .eq('id', user.id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    setProfile(data);
+    return data as Profile;
+  };
+
   const addActivity = async (type: 'sale' | 'product', message: string) => {
     const newAct = {
       id: `act_${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -196,7 +211,7 @@ export function useDigitQuoStore() {
     user, profile, loading,
     currentSellerName, currentBrokerName,
     addProduct, updateProduct, deleteProduct,
-    addSale, addClaim, updateClaimStatus, addActivity,
+    addSale, addClaim, updateClaimStatus, addActivity, updateProfile,
     showToast, logout
   };
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, ShieldIcon } from '../../../components/ui/icons';
-import { routeForRole } from '../../../lib/utils';
+import { routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
 
 export default function LoginPage() {
@@ -23,12 +23,12 @@ export default function LoginPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role,onboarding_complete')
         .eq('id', session.user.id)
         .single();
 
-      if (profile?.role && mounted) {
-        router.replace(routeForRole(profile.role));
+      if (profile && mounted) {
+        router.replace(routeForProfile(profile));
       }
     }
 
@@ -58,17 +58,17 @@ export default function LoginPage() {
     // Fetch user profile to determine routing
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role,onboarding_complete')
       .eq('id', authData.user.id)
       .single();
 
-    if (profileError || !profile?.role) {
+    if (profileError || !profile) {
       setSubmitting(false);
       setError('Your account profile is not ready. Contact support before signing in again.');
       return;
     }
 
-    router.push(routeForRole(profile.role));
+    router.push(routeForProfile(profile));
   };
 
   const handleGoogleLogin = async () => {

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
-import { formatCurrency, formatDate, routeForRole } from '../../lib/utils';
+import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { ActivityList, EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
 import { ToastRegion } from '../ui/ToastRegion';
@@ -22,16 +22,16 @@ export function AdminPanelPage({ section }: { section: AdminSection }) {
       router.replace('/login');
       return;
     }
-    if (!store.profile?.role) {
-      router.replace('/login');
+    if (!store.profile?.role || !isProfileComplete(store.profile)) {
+      router.replace(routeForProfile(store.profile));
       return;
     }
     if (store.profile.role !== 'admin') {
-      router.replace(routeForRole(store.profile.role));
+      router.replace(routeForProfile(store.profile));
     }
-  }, [router, store.loading, store.profile?.role, store.user]);
+  }, [router, store.loading, store.profile, store.user]);
 
-  if (store.loading || !store.user || store.profile?.role !== 'admin') return <div style={{ padding: '40px' }}>Loading workspace...</div>;
+  if (store.loading || !store.user || store.profile?.role !== 'admin' || !isProfileComplete(store.profile)) return <div style={{ padding: '40px' }}>Loading workspace...</div>;
 
   const sellers = new Set(store.products.map((product) => product.seller));
   const brokers = new Set(store.sales.map((sale) => sale.broker));
@@ -61,6 +61,7 @@ export function AdminPanelPage({ section }: { section: AdminSection }) {
           ['/admin/products', 'All products', <PackageIcon key="package" />],
           ['/admin/transactions', 'Transactions', <SaleIcon key="sale" />],
           ['/admin/claims', 'Claims & Payouts', <WalletIcon key="wallet" />],
+          ['/profile', 'My profile', <UsersIcon size={18} key="profile" />],
           ['/', 'Back to website', <BackIcon key="back" />]
         ]}
         user={{ initials: 'OA', name: 'Owner Admin', role: 'Full platform access' }}

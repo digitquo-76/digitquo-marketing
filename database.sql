@@ -9,12 +9,14 @@ create table if not exists public.profiles (
   business_name text,
   business_type text,
   market text,
+  onboarding_complete boolean not null default false,
   created_at timestamptz not null default timezone('utc'::text, now())
 );
 
 alter table public.profiles add column if not exists business_name text;
 alter table public.profiles add column if not exists business_type text;
 alter table public.profiles add column if not exists market text;
+alter table public.profiles add column if not exists onboarding_complete boolean not null default false;
 
 create table if not exists public.products (
   id text primary key,
@@ -90,6 +92,16 @@ as $$
   select coalesce(display_name, email) from public.profiles where id = auth.uid()
 $$;
 
+create or replace function public.current_profile_onboarded()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(onboarding_complete, false) from public.profiles where id = auth.uid()
+$$;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -98,12 +110,18 @@ set search_path = public
 as $$
 declare
   requested_role text;
+  completed boolean;
 begin
-  requested_role := coalesce(new.raw_user_meta_data->>'role', 'seller');
+  requested_role := new.raw_user_meta_data->>'role';
 
   if requested_role not in ('seller', 'broker') then
     requested_role := 'seller';
   end if;
+
+  completed := (
+    (requested_role = 'seller' and nullif(new.raw_user_meta_data->>'business_name', '') is not null)
+    or (requested_role = 'broker' and nullif(new.raw_user_meta_data->>'market', '') is not null)
+  );
 
   insert into public.profiles (
     id,
@@ -112,7 +130,8 @@ begin
     display_name,
     business_name,
     business_type,
-    market
+    market,
+    onboarding_complete
   )
   values (
     new.id,
@@ -121,7 +140,8 @@ begin
     nullif(new.raw_user_meta_data->>'full_name', ''),
     case when requested_role = 'seller' then nullif(new.raw_user_meta_data->>'business_name', '') else null end,
     case when requested_role = 'seller' then nullif(new.raw_user_meta_data->>'business_type', '') else null end,
-    case when requested_role = 'broker' then nullif(new.raw_user_meta_data->>'market', '') else null end
+    case when requested_role = 'broker' then nullif(new.raw_user_meta_data->>'market', '') else null end,
+    completed
   )
   on conflict (id) do update
   set
@@ -129,7 +149,8 @@ begin
     display_name = excluded.display_name,
     business_name = excluded.business_name,
     business_type = excluded.business_type,
-    market = excluded.market;
+    market = excluded.market,
+    onboarding_complete = excluded.onboarding_complete;
 
   return new;
 end;
@@ -147,7 +168,8 @@ insert into public.profiles (
   display_name,
   business_name,
   business_type,
-  market
+  market,
+  onboarding_complete
 )
 select
   users.id,
@@ -159,11 +181,22 @@ select
   nullif(users.raw_user_meta_data->>'full_name', '') as display_name,
   case when users.raw_user_meta_data->>'role' = 'seller' then nullif(users.raw_user_meta_data->>'business_name', '') else null end as business_name,
   case when users.raw_user_meta_data->>'role' = 'seller' then nullif(users.raw_user_meta_data->>'business_type', '') else null end as business_type,
-  case when users.raw_user_meta_data->>'role' = 'broker' then nullif(users.raw_user_meta_data->>'market', '') else null end as market
+  case when users.raw_user_meta_data->>'role' = 'broker' then nullif(users.raw_user_meta_data->>'market', '') else null end as market,
+  (
+    (users.raw_user_meta_data->>'role' = 'seller' and nullif(users.raw_user_meta_data->>'business_name', '') is not null)
+    or (users.raw_user_meta_data->>'role' = 'broker' and nullif(users.raw_user_meta_data->>'market', '') is not null)
+    or exists (select 1 from public.profiles existing where existing.id = users.id and existing.role = 'admin')
+  ) as onboarding_complete
 from auth.users as users
 where not exists (
   select 1 from public.profiles where profiles.id = users.id
 );
+
+update public.profiles
+set onboarding_complete = true
+where role = 'admin'
+  or (role = 'seller' and nullif(business_name, '') is not null)
+  or (role = 'broker' and nullif(market, '') is not null);
 
 drop policy if exists "profiles read own or admin" on public.profiles;
 create policy "profiles read own or admin"
@@ -173,15 +206,22 @@ using (id = auth.uid() or public.current_profile_role() = 'admin');
 drop policy if exists "profiles insert own" on public.profiles;
 
 drop policy if exists "profiles update own display name or admin" on public.profiles;
-create policy "profiles update own display name or admin"
+drop policy if exists "profiles complete own seller broker profile" on public.profiles;
+create policy "profiles complete own seller broker profile"
 on public.profiles for update
-using (id = auth.uid() or public.current_profile_role() = 'admin')
-with check (id = auth.uid() or public.current_profile_role() = 'admin');
+using (id = auth.uid())
+with check (id = auth.uid() and role in ('seller', 'broker') and onboarding_complete = true);
+
+drop policy if exists "profiles admin update" on public.profiles;
+create policy "profiles admin update"
+on public.profiles for update
+using (public.current_profile_role() = 'admin')
+with check (public.current_profile_role() = 'admin');
 
 drop policy if exists "products visible to signed in users" on public.products;
 create policy "products visible to signed in users"
 on public.products for select
-using (auth.role() = 'authenticated');
+using (auth.role() = 'authenticated' and public.current_profile_onboarded());
 
 drop policy if exists "sellers manage own products" on public.products;
 create policy "sellers manage own products"

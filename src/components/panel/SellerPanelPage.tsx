@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { Product } from '../../types';
-import { formatCurrency, routeForRole } from '../../lib/utils';
+import { formatCurrency, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { ActivityList, EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
 import { ProductModal } from './Modals';
 import { ToastRegion } from '../ui/ToastRegion';
-import { ActivityIcon, EditIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, TrashIcon } from '../ui/icons';
+import { ActivityIcon, EditIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, TrashIcon, UsersIcon } from '../ui/icons';
 
 type SellerSection = 'overview' | 'products' | 'activity';
 
@@ -27,16 +27,16 @@ export function SellerPanelPage({ section }: { section: SellerSection }) {
       router.replace('/login');
       return;
     }
-    if (!store.profile?.role) {
-      router.replace('/login');
+    if (!store.profile?.role || !isProfileComplete(store.profile)) {
+      router.replace(routeForProfile(store.profile));
       return;
     }
     if (store.profile.role !== 'seller') {
-      router.replace(routeForRole(store.profile.role));
+      router.replace(routeForProfile(store.profile));
     }
-  }, [router, store.loading, store.profile?.role, store.user]);
+  }, [router, store.loading, store.profile, store.user]);
 
-  if (store.loading || !store.user || store.profile?.role !== 'seller') return <div style={{ padding: '40px' }}>Loading workspace...</div>;
+  if (store.loading || !store.user || store.profile?.role !== 'seller' || !isProfileComplete(store.profile)) return <div style={{ padding: '40px' }}>Loading workspace...</div>;
 
   const currentSeller = store.currentSellerName;
   const myProducts = store.products.filter((product) => product.seller === currentSeller);
@@ -98,7 +98,8 @@ export function SellerPanelPage({ section }: { section: SellerSection }) {
         nav={[
           ['/seller', 'Overview', <GridIcon key="grid" />],
           ['/seller/products', 'My products', <PackageIcon key="package" />],
-          ['/seller/activity', 'Activity', <ActivityIcon key="activity" />]
+          ['/seller/activity', 'Activity', <ActivityIcon key="activity" />],
+          ['/profile', 'My profile', <UsersIcon size={18} key="profile" />]
         ]}
         user={{ initials: currentSeller.slice(0,2).toUpperCase(), name: currentSeller, role: 'Seller account' }}
         title="Seller workspace"
