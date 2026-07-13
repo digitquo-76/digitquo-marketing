@@ -102,64 +102,11 @@ as $$
   select coalesce(onboarding_complete, false) from public.profiles where id = auth.uid()
 $$;
 
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  requested_role text;
-  completed boolean;
-begin
-  requested_role := new.raw_user_meta_data->>'role';
-
-  if requested_role not in ('seller', 'broker') then
-    requested_role := 'seller';
-  end if;
-
-  completed := (
-    (requested_role = 'seller' and nullif(new.raw_user_meta_data->>'business_name', '') is not null)
-    or (requested_role = 'broker' and nullif(new.raw_user_meta_data->>'market', '') is not null)
-  );
-
-  insert into public.profiles (
-    id,
-    role,
-    email,
-    display_name,
-    business_name,
-    business_type,
-    market,
-    onboarding_complete
-  )
-  values (
-    new.id,
-    requested_role,
-    coalesce(new.email, ''),
-    nullif(new.raw_user_meta_data->>'full_name', ''),
-    case when requested_role = 'seller' then nullif(new.raw_user_meta_data->>'business_name', '') else null end,
-    case when requested_role = 'seller' then nullif(new.raw_user_meta_data->>'business_type', '') else null end,
-    case when requested_role = 'broker' then nullif(new.raw_user_meta_data->>'market', '') else null end,
-    completed
-  )
-  on conflict (id) do update
-  set
-    email = excluded.email,
-    display_name = excluded.display_name,
-    business_name = excluded.business_name,
-    business_type = excluded.business_type,
-    market = excluded.market,
-    onboarding_complete = excluded.onboarding_complete;
-
-  return new;
-end;
-$$;
-
 drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-after insert on auth.users
-for each row execute function public.handle_new_user();
+drop function if exists public.handle_new_user();
+
+-- Profiles are created by the app after authentication through ensureUserProfile().
+-- This keeps Google Auth user creation independent from marketplace onboarding details.
 
 insert into public.profiles (
   id,
