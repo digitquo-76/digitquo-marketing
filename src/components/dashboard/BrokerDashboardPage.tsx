@@ -159,7 +159,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
       }
       
       setOrderProduct(null);
-      store.showToast(`Payment successful. Invoice sent to broker: ${formatCurrency(order.total)}. You earned ${order.points} pts.`, 'success');
+      store.showToast(`Payment successful. Invoice sent to broker: ${formatCurrency(order.total)}. You earned ${formatCurrency(order.points)} commission.`, 'success');
     } catch (error) {
       store.showToast(error instanceof Error ? error.message : 'Could not complete payment.', 'error');
     } finally {
@@ -170,7 +170,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
   const claimPoints = async () => {
     if (availablePoints <= 0) return;
     if (!hasPayoutDetails) {
-      store.showToast('Add payout account details in your profile before claiming points.', 'error');
+      store.showToast('Add payout account details in your profile before claiming commission.', 'error');
       router.push('/profile');
       return;
     }
@@ -186,7 +186,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
         payoutUpi: payoutDetails.upi
       });
       try {
-        await store.addActivity('sale', `${currentBroker} requested payout of ${availablePoints} pts (${formatCurrency(availablePoints)}). Check the Claims & Payouts page for account details.`);
+        await store.addActivity('sale', `${currentBroker} requested payout of ${formatCurrency(availablePoints)} commission. Check the Claims & Payouts page for account details.`);
       } catch {
         // The claim is saved; activity is only an admin-facing notification.
       }
@@ -211,8 +211,8 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
       }
       store.showToast(
         adminEmailSent
-          ? `Claimed ${availablePoints} points. Admin has been emailed with the payout details.`
-          : `Claimed ${availablePoints} points. Admin email could not be confirmed; please contact admin if needed.`,
+          ? `Claimed ${formatCurrency(availablePoints)} commission. Admin has been emailed with the payout details.`
+          : `Claimed ${formatCurrency(availablePoints)} commission. Admin email could not be confirmed; please contact admin if needed.`,
         adminEmailSent ? 'success' : 'error'
       );
     } catch (error) {
@@ -253,7 +253,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
             <section className="metrics-grid" aria-label="Broker metrics">
               <Metric icon={<PackageIcon size={18} />} value={available.length} label="Products available" />
               <Metric icon={<SaleIcon size={18} />} value={formatCurrency(sales.reduce((sum, sale) => sum + sale.total, 0))} label="My order value" />
-              <Metric icon={<WalletIcon size={18} />} value={availablePoints} label="Available points" />
+              <Metric icon={<WalletIcon size={18} />} value={formatCurrency(availablePoints)} label="Available commission" />
               <Metric icon={<UsersIcon size={18} />} value={new Set(available.map((product) => product.seller)).size} label="Active sellers" />
             </section>
 
@@ -274,12 +274,12 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                 <header className="dashboard-card-header">
                   <div>
                     <h2 className="dashboard-card-title">Rewards workspace</h2>
-                    <p className="dashboard-card-subtitle">Claim your earned points</p>
+                    <p className="dashboard-card-subtitle">Claim your earned commission</p>
                   </div>
                   <Link className="btn-dashboard btn-dashboard-secondary" href="/broker/rewards">View rewards</Link>
                 </header>
                 <div className="dashboard-card-body">
-                  <p className="page-description">You have {availablePoints} points ready to claim. Each point converts to real money within 24hrs.</p>
+                  <p className="page-description">You have {formatCurrency(availablePoints)} commission ready to claim.</p>
                 </div>
               </aside>
             </section>
@@ -327,8 +327,8 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                         </Link>
                         <div className="catalog-meta">
                           <span className="catalog-price-stack">
-                            {(product.mrp ?? product.price) > product.price && <span className="catalog-mrp">{formatCurrency(product.mrp ?? product.price)}</span>}
-                            <span className="catalog-price">{formatCurrency(product.price)}</span>
+                            <span className="catalog-price">{formatCurrency(product.mrp)}</span>
+                            <span className="catalog-commission">Earn {formatCurrency(product.commission)}</span>
                           </span>
                           <span className="catalog-stock">{product.stock} available</span>
                         </div>
@@ -362,7 +362,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
               </header>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Product</th><th>Customer</th><th>Phone</th><th>Address</th><th>Quantity</th><th>Total</th><th>Points</th><th>Date</th></tr></thead>
+                  <thead><tr><th>Product</th><th>Customer</th><th>Phone</th><th>Address</th><th>Quantity</th><th>Total</th><th>Commission</th><th>Date</th></tr></thead>
                   <tbody>
                     {sales.length ? sales.map((sale) => (
                       <tr key={sale.id}>
@@ -372,7 +372,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                         <td>{sale.customerAddress || 'Not added'}</td>
                         <td>{sale.quantity}</td>
                         <td>{formatCurrency(sale.total)}</td>
-                        <td>+{sale.points}</td>
+                        <td>+{formatCurrency(sale.points)}</td>
                         <td>{formatDate(sale.createdAt)}</td>
                       </tr>
                     )) : <EmptyRow colSpan={8} title="No orders placed yet" text="Open the catalog to place your first order." />}
@@ -389,14 +389,14 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
               <div>
                 <p className="eyebrow">Rewards</p>
                 <h1 className="page-title">Claim your commission.</h1>
-                <p className="page-description">Redeem the points you've earned from broker orders. Payouts are processed in real money within 24 hours.</p>
+                <p className="page-description">Redeem the commission you've earned from broker orders. Payouts are processed in real money within 24 hours.</p>
               </div>
-              {availablePoints > 0 && <button className="btn-dashboard btn-dashboard-primary" type="button" onClick={claimPoints}>Claim {availablePoints} pts for cash</button>}
+              {availablePoints > 0 && <button className="btn-dashboard btn-dashboard-primary" type="button" onClick={claimPoints}>Claim {formatCurrency(availablePoints)} commission</button>}
             </section>
 
             <section className="metrics-grid">
-              <Metric icon={<WalletIcon size={18} />} value={availablePoints} label="Available points" />
-              <Metric icon={<SaleIcon size={18} />} value={totalPointsEarned} label="Total earned points" />
+              <Metric icon={<WalletIcon size={18} />} value={formatCurrency(availablePoints)} label="Available commission" />
+              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(totalPointsEarned)} label="Total earned commission" />
             </section>
 
             <section className="dashboard-card" style={{ marginTop: '2rem' }}>
@@ -417,7 +417,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                     <DetailItem label="IFSC" value={payoutDetails.ifsc || 'Not added'} />
                   </div>
                 ) : (
-                  <p className="page-description">Add account holder name and either UPI ID or bank details before claiming points.</p>
+                  <p className="page-description">Add account holder name and either UPI ID or bank details before claiming commission.</p>
                 )}
               </div>
             </section>
@@ -431,12 +431,12 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
               </header>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Claim ID</th><th>Points Redeemed</th><th>Status</th><th>Date Requested</th></tr></thead>
+                  <thead><tr><th>Claim ID</th><th>Commission Redeemed</th><th>Status</th><th>Date Requested</th></tr></thead>
                   <tbody>
                     {brokerClaims.length ? brokerClaims.map((claim) => (
                       <tr key={claim.id}>
                         <td><span className="cell-title">{claim.id}</span></td>
-                        <td>{claim.points} pts</td>
+                        <td>{formatCurrency(claim.points)}</td>
                         <td>
                           {claim.status === 'paid' ? 
                             <span className="badge badge-success" style={{background: '#e8fbf3', color: '#087a55', padding: '4px 8px', borderRadius: '12px'}}>Paid out</span> : 
@@ -444,7 +444,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                         </td>
                         <td>{formatDate(claim.createdAt)}</td>
                       </tr>
-                    )) : <EmptyRow colSpan={4} title="No claims requested" text="Place orders to earn points and claim rewards." />}
+                    )) : <EmptyRow colSpan={4} title="No claims requested" text="Place orders to earn commission and claim payouts." />}
                   </tbody>
                 </table>
               </div>
@@ -469,8 +469,8 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
 
                   <div className="catalog-meta" style={{ padding: '16px 0', borderTop: '1px solid #e8e1f1', borderBottom: '1px solid #e8e1f1', marginBottom: '20px' }}>
                     <div className="catalog-price-stack">
-                      <span className="catalog-price" style={{ fontSize: '1.8rem', color: '#dc2626' }}>{formatCurrency(activeProduct.price)}</span>
-                      {(activeProduct.mrp ?? activeProduct.price) > activeProduct.price && <span className="catalog-mrp" style={{ fontSize: '0.9rem' }}>M.R.P: {formatCurrency(activeProduct.mrp ?? activeProduct.price)}</span>}
+                      <span className="catalog-price" style={{ fontSize: '1.8rem', color: '#dc2626' }}>{formatCurrency(activeProduct.mrp)}</span>
+                      <span className="catalog-commission" style={{ fontSize: '0.9rem' }}>Commission: {formatCurrency(activeProduct.commission)} per unit</span>
                     </div>
                   </div>
 
@@ -511,7 +511,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                             <h3 className="catalog-name" style={{ fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.name}</h3>
                           </Link>
                           <div className="catalog-meta" style={{ margin: '8px 0' }}>
-                            <span className="catalog-price">{formatCurrency(product.price)}</span>
+                            <span className="catalog-price">{formatCurrency(product.mrp)}</span>
                           </div>
                         </div>
                       </article>

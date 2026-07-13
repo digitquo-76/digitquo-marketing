@@ -2,8 +2,8 @@ export interface Product {
   id: string;
   name: string;
   category: string;
-  mrp?: number;
-  price: number;
+  mrp: number;
+  commission: number;
   stock: number;
   seller: string;
   image: string;

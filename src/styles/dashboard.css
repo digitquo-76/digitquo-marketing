@@ -817,6 +817,12 @@ a {
   text-decoration: line-through;
 }
 
+.catalog-commission {
+  color: #0f766e;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .catalog-stock {
   color: var(--dashboard-muted);
   font-size: 0.7rem;

@@ -6,8 +6,12 @@ import { safeImageUrl, formatCurrency } from '../../lib/utils';
 export function ProductModal({ open, product, onClose, onSave, showToast }: any) {
   const initial = useMemo(
     () => product
-      ? { ...product, mrp: product.mrp ?? product.price }
-      : { name: '', category: '', mrp: '', price: '', stock: '', image: '', description: '' },
+      ? {
+          ...product,
+          mrp: product.mrp ?? product.price,
+          commission: product.commission ?? Math.max(0, Number(product.mrp || 0) - Number(product.price || 0))
+        }
+      : { name: '', category: '', mrp: '', commission: '', stock: '', image: '', description: '' },
     [product]
   );
   const [values, setValues] = useState(initial);
@@ -44,17 +48,17 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       name: String(values.name || '').trim(),
       category: String(values.category || '').trim(),
       mrp: Number(values.mrp),
-      price: Number(values.price),
+      commission: Number(values.commission),
       stock: Number(values.stock),
       image: safeImageUrl(String(values.image || '').trim()),
       description: String(values.description || '').trim()
     };
-    if (!cleaned.name || !cleaned.category || cleaned.mrp <= 0 || cleaned.price <= 0 || cleaned.stock < 0) {
+    if (!cleaned.name || !cleaned.category || cleaned.mrp <= 0 || cleaned.commission < 0 || cleaned.stock < 0) {
       showToast('Please complete all required product fields.', 'error');
       return;
     }
-    if (cleaned.price > cleaned.mrp) {
-      showToast('Selling price cannot be higher than MRP.', 'error');
+    if (cleaned.commission > cleaned.mrp) {
+      showToast('Commission cannot be higher than MRP.', 'error');
       return;
     }
     onSave(cleaned);
@@ -92,8 +96,8 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
               <input className="form-control" value={values.mrp || ''} onChange={(event) => update('mrp', event.target.value)} type="number" required min="1" step="1" placeholder="1299" />
             </label>
             <label className="form-group">
-              <span className="form-label">Selling price (Rs) *</span>
-              <input className="form-control" value={values.price || ''} onChange={(event) => update('price', event.target.value)} type="number" required min="1" step="1" placeholder="999" />
+              <span className="form-label">Broker commission (Rs) *</span>
+              <input className="form-control" value={values.commission ?? ''} onChange={(event) => update('commission', event.target.value)} type="number" required min="0" step="1" placeholder="300" />
             </label>
             <label className="form-group">
               <span className="form-label">Available stock *</span>
@@ -164,12 +168,12 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
             </label>
             <label className="form-group">
               <span className="form-label">MRP</span>
-              <input className="form-control" value={formatCurrency(product.mrp ?? product.price)} readOnly />
+              <input className="form-control" value={formatCurrency(product.mrp)} readOnly />
             </label>
             <label className="form-group">
               <span className="form-label">Quantity *</span>
               <input className="form-control" value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} type="number" required min="1" max={product.stock} step="1" />
-              <span className="form-help">{product.stock} units available at {formatCurrency(product.price)} selling price each.</span>
+              <span className="form-help">{product.stock} units available at {formatCurrency(product.mrp)} MRP each. Commission: {formatCurrency(product.commission)} per unit.</span>
             </label>
             <label className="form-group full">
               <span className="form-label">Customer or business name *</span>
@@ -191,7 +195,7 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
         </div>
         <footer className="modal-footer">
           <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onClose} disabled={submitting}>Cancel</button>
-          <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={submitting}>{submitting ? 'Processing payment...' : `Pay ${formatCurrency(product.price * Number(quantity || 1))}`}</button>
+          <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={submitting}>{submitting ? 'Processing payment...' : `Pay ${formatCurrency(product.mrp * Number(quantity || 1))}`}</button>
         </footer>
       </form>
     </div>

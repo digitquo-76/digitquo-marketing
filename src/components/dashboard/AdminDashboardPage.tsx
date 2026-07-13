@@ -63,7 +63,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
   const markAsPaid = async (claimId: string, broker: string, points: number) => {
     try {
       await store.updateClaimStatus(claimId, 'paid');
-      await store.addActivity('sale', `Platform paid out ${points} pts to ${broker}.`);
+      await store.addActivity('sale', `Platform paid out ${formatCurrency(points)} commission to ${broker}.`);
       store.showToast('Claim marked as paid.', 'success');
     } catch (error) {
       store.showToast(error instanceof Error ? error.message : 'Could not update claim.', 'error');
@@ -131,7 +131,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
                   <Link className="btn-dashboard btn-dashboard-secondary" href="/admin/claims">View claims</Link>
                 </header>
                 <div className="dashboard-card-body">
-                  <p className="page-description">{pendingClaimsCount} claims pending review. Total paid out to date: {formatCurrency(totalPaidOut)} (equiv. points).</p>
+                  <p className="page-description">{pendingClaimsCount} claims pending review. Total commission paid out to date: {formatCurrency(totalPaidOut)}.</p>
                 </div>
               </aside>
             </section>
@@ -199,14 +199,14 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
               </header>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Product</th><th>Seller</th><th>MRP</th><th>Selling price</th><th>Stock</th><th>Status</th><th>Added</th></tr></thead>
+                  <thead><tr><th>Product</th><th>Seller</th><th>MRP</th><th>Commission</th><th>Stock</th><th>Status</th><th>Added</th></tr></thead>
                   <tbody>
                     {filteredProducts.length ? filteredProducts.map((product) => (
                       <tr key={product.id}>
                         <td><ProductCell product={product} /></td>
                         <td>{product.seller}</td>
-                        <td>{formatCurrency(product.mrp ?? product.price)}</td>
-                        <td>{formatCurrency(product.price)}</td>
+                        <td>{formatCurrency(product.mrp)}</td>
+                        <td>{formatCurrency(product.commission)}</td>
                         <td>{product.stock}</td>
                         <td><StockBadge stock={product.stock} /></td>
                         <td>{formatDate(product.createdAt)}</td>
@@ -271,7 +271,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
 
             <section className="metrics-grid">
               <Metric icon={<WalletIcon size={18} />} value={pendingClaimsCount} label="Pending claims" />
-              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(totalPaidOut)} label="Total points paid out" />
+              <Metric icon={<SaleIcon size={18} />} value={formatCurrency(totalPaidOut)} label="Total commission paid out" />
             </section>
 
             <section className="dashboard-card" style={{ marginTop: '2rem' }}>
@@ -285,7 +285,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
                 <div className="dashboard-card-body" style={{ paddingBottom: 0 }}>
                   {pendingClaims.slice(0, 3).map((claim) => (
                     <div className="claim-message" key={claim.id}>
-                      <strong>{claim.broker} requested {claim.points} pts ({formatCurrency(claim.points)})</strong>
+                      <strong>{claim.broker} requested {formatCurrency(claim.points)} commission</strong>
                       <p>Transfer manually using the payout details below, then mark the claim as paid.</p>
                       <PayoutDetails claim={claim} />
                     </div>
@@ -294,13 +294,13 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
               )}
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Claim ID</th><th>Broker</th><th>Points (Value)</th><th>Payout details</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Claim ID</th><th>Broker</th><th>Commission</th><th>Payout details</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
                   <tbody>
                     {store.claims.length ? store.claims.map((claim) => (
                       <tr key={claim.id}>
                         <td><span className="cell-title">{claim.id}</span></td>
                         <td>{claim.broker}</td>
-                        <td>{claim.points} ({formatCurrency(claim.points)})</td>
+                        <td>{formatCurrency(claim.points)}</td>
                         <td><PayoutDetails claim={claim} compact /></td>
                         <td>
                           {claim.status === 'paid' ? 

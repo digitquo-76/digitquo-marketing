@@ -189,7 +189,7 @@ export function ProfileDashboardPage() {
                   </label>
                   <div className="form-section-heading full">
                     <h3>Payout account details</h3>
-                    <p>These details are sent to admin when you claim points for manual transfer.</p>
+                    <p>These details are sent to admin when you claim commission for manual transfer.</p>
                   </div>
                   <label className="form-group full">
                     <span className="form-label">Account holder name</span>

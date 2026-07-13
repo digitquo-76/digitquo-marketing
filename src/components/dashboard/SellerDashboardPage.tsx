@@ -77,8 +77,8 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
         await store.addProduct({
           name: values.name,
           category: values.category,
-          price: Number(values.price),
-          mrp: Number(values.mrp) || Number(values.price),
+          mrp: Number(values.mrp),
+          commission: Number(values.commission),
           stock: Number(values.stock),
           seller: currentSeller,
           image: values.image || '',
@@ -148,7 +148,7 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
                 <header className="dashboard-card-header">
                   <div>
                     <h2 className="dashboard-card-title">Product workspace</h2>
-                    <p className="dashboard-card-subtitle">Open the listings page to edit prices, stock, and visibility</p>
+                    <p className="dashboard-card-subtitle">Open the listings page to edit MRP, commission, stock, and visibility</p>
                   </div>
                   <Link className="btn-dashboard btn-dashboard-secondary" href="/seller/products">View products</Link>
                 </header>
@@ -231,14 +231,14 @@ export function SellerDashboardPage({ section }: { section: SellerSection }) {
               </header>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Product</th><th>Category</th><th>MRP</th><th>Selling price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Product</th><th>Category</th><th>MRP</th><th>Commission</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody>
                     {visibleProducts.length ? visibleProducts.map((product) => (
                       <tr key={product.id}>
                         <td><ProductCell product={product} /></td>
                         <td>{product.category}</td>
-                        <td>{formatCurrency(product.mrp ?? product.price)}</td>
-                        <td>{formatCurrency(product.price)}</td>
+                        <td>{formatCurrency(product.mrp)}</td>
+                        <td>{formatCurrency(product.commission)}</td>
                         <td>{product.stock}</td>
                         <td><StockBadge stock={product.stock} /></td>
                         <td>

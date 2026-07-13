@@ -318,10 +318,37 @@ export function useDigitQuoStore() {
 
 // Mapping helpers to align TypeScript frontend with Postgres snake_case tables
 function mapProductToDB(p: Product) {
-  return { id: p.id, name: p.name, category: p.category, mrp: p.mrp, price: p.price, stock: p.stock, seller: p.seller, image: p.image, description: p.description, created_at: p.createdAt };
+  return {
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    mrp: p.mrp,
+    commission: p.commission,
+    price: p.mrp,
+    stock: p.stock,
+    seller: p.seller,
+    image: p.image,
+    description: p.description,
+    created_at: p.createdAt
+  };
 }
 function mapProductFromDB(p: any): Product {
-  return { id: p.id, name: p.name, category: p.category, mrp: p.mrp, price: p.price, stock: p.stock, seller: p.seller, image: p.image, description: p.description, createdAt: p.created_at };
+  const mrp = Number(p.mrp ?? p.price ?? 0);
+  const legacySellingPrice = Number(p.price ?? mrp);
+  const commission = Number(p.commission ?? Math.max(0, mrp - legacySellingPrice));
+
+  return {
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    mrp,
+    commission,
+    stock: p.stock,
+    seller: p.seller,
+    image: p.image,
+    description: p.description,
+    createdAt: p.created_at
+  };
 }
 
 function mapSaleToDB(s: Sale) {

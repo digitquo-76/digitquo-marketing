@@ -34,12 +34,28 @@ create table if not exists public.products (
   category text not null check (char_length(category) between 1 and 80),
   mrp numeric(12, 2) not null check (mrp > 0),
   price numeric(12, 2) not null check (price > 0 and price <= mrp),
+  commission numeric(12, 2) not null default 0,
   stock integer not null default 0 check (stock >= 0),
   seller text not null,
   image text,
   description text not null default '',
-  created_at timestamptz not null default timezone('utc'::text, now())
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  constraint products_commission_check check (commission >= 0 and commission <= mrp)
 );
+
+alter table public.products add column if not exists commission numeric(12, 2);
+update public.products
+set commission = greatest(0, mrp - price)
+where commission is null;
+alter table public.products alter column commission set default 0;
+alter table public.products alter column commission set not null;
+do $$
+begin
+  alter table public.products add constraint products_commission_check check (commission >= 0 and commission <= mrp);
+exception
+  when duplicate_object then null;
+end $$;
+comment on column public.products.price is 'Legacy selling-price column retained for compatibility. Current app uses mrp for order totals and commission for broker rewards.';
 
 create table if not exists public.sales (
   id text primary key,
@@ -219,8 +235,8 @@ begin
   end if;
 
   v_broker := public.current_profile_name();
-  v_total := v_product.price * p_quantity;
-  v_points := greatest(0, (v_product.mrp - v_product.price) * p_quantity);
+  v_total := v_product.mrp * p_quantity;
+  v_points := greatest(0, v_product.commission * p_quantity);
 
   update public.products
     set stock = stock - p_quantity
@@ -251,7 +267,7 @@ begin
     btrim(p_customer_address),
     btrim(coalesce(p_order_notes, '')),
     p_quantity,
-    v_product.price,
+    v_product.mrp,
     v_total,
     v_points,
     v_broker
@@ -343,8 +359,8 @@ begin
     raise exception 'Only % units are available.', v_product.stock;
   end if;
 
-  v_total := v_product.price * p_quantity;
-  v_points := greatest(0, (v_product.mrp - v_product.price) * p_quantity);
+  v_total := v_product.mrp * p_quantity;
+  v_points := greatest(0, v_product.commission * p_quantity);
 
   begin
     update public.products
@@ -378,7 +394,7 @@ begin
       btrim(p_customer_address),
       btrim(coalesce(p_order_notes, '')),
       p_quantity,
-      v_product.price,
+      v_product.mrp,
       v_total,
       v_points,
       v_broker,

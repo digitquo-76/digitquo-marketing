@@ -82,8 +82,9 @@ npm.cmd run start -- --port 3002
 - Next.js generates the browser document; there is no handwritten `.html` source file.
 - Dashboard data is stored in Supabase with Row Level Security enabled by `database.sql`.
 - Broker sales are created only by the server-side paid-order route after Razorpay verification. The schema stores Razorpay order/payment IDs to make retries idempotent.
+- Seller products use MRP for customer payment totals and commission for the broker amount earned per unit.
 - Broker profiles collect payout account details. Claim requests snapshot those details so admins can manually transfer the claim amount and mark the claim as paid.
-- When a broker claims points, admins are emailed the claim amount and saved payout account details.
+- When a broker claims commission, admins are emailed the claim amount and saved payout account details.
 - Admin routes include `noindex` response headers and client-side role redirects. Supabase RLS remains the source of truth for data access.
 - Create the first admin profile manually in Supabase after registering the owner account, then keep public registration limited to seller and broker roles.
 - Review the legal page copy with counsel before launch.

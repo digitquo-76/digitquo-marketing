@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 type ProductRow = {
   id: string;
   name: string;
-  price: number;
+  mrp: number;
   stock: number;
 };
 
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
   const { data: product, error: productError } = await userClient
     .from('products')
-    .select('id, name, price, stock')
+    .select('id, name, mrp, stock')
     .eq('id', productId)
     .single<ProductRow>();
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Only ${product.stock} units are available.` }, { status: 400 });
   }
 
-  const amount = Math.round(Number(product.price) * quantity * 100);
+  const amount = Math.round(Number(product.mrp) * quantity * 100);
   const receipt = `dq_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
   const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
     method: 'POST',

@@ -149,15 +149,15 @@ export async function POST(request: NextRequest) {
 
   const { data: product, error: productError } = await userClient
     .from('products')
-    .select('price, stock')
+    .select('mrp, stock')
     .eq('id', productId)
-    .single<{ price: number; stock: number }>();
+    .single<{ mrp: number; stock: number }>();
 
   if (productError || !product) {
     return NextResponse.json({ error: 'Product was not found.' }, { status: 404 });
   }
 
-  const expectedAmount = Math.round(Number(product.price) * quantity * 100);
+  const expectedAmount = Math.round(Number(product.mrp) * quantity * 100);
   if (Number(razorpayOrder.amount || 0) !== expectedAmount) {
     return NextResponse.json({ error: 'Payment amount does not match the current order total.' }, { status: 400 });
   }
@@ -337,7 +337,7 @@ function buildBrokerInvoiceHtml(order: SaleRow, brokerName: string, paymentId: s
     ['Quantity', String(order.quantity)],
     ['Unit price', formatRupees(order.unit_price)],
     ['Amount paid', formatRupees(order.total)],
-    ['Reward points earned', String(order.points)]
+    ['Commission earned', formatRupees(order.points)]
   ];
 
   return `
@@ -367,7 +367,7 @@ function buildBrokerInvoiceText(order: SaleRow, brokerName: string, paymentId: s
     `Quantity: ${order.quantity}`,
     `Unit price: ${formatRupees(order.unit_price)}`,
     `Amount paid: ${formatRupees(order.total)}`,
-    `Reward points earned: ${order.points}`
+    `Commission earned: ${formatRupees(order.points)}`
   ].join('\n');
 }
 
@@ -384,7 +384,7 @@ function buildBrokerInvoicePdf(order: SaleRow, brokerName: string, paymentId: st
     ['Quantity', String(order.quantity)],
     ['Unit price', formatPdfMoney(order.unit_price)],
     ['Amount paid', formatPdfMoney(order.total)],
-    ['Reward points earned', String(order.points)],
+    ['Commission earned', formatPdfMoney(order.points)],
     ['Razorpay payment ID', paymentId],
     ['Razorpay order ID', razorpayOrderId],
     ['Issued on', formatDateForInvoice(order.created_at)]

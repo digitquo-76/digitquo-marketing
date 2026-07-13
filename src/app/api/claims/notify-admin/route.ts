@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({
       from: resendFromEmail,
       to: adminEmails,
-      subject: `Claim initiated: ${claim.broker} requested ${formatRupees(claim.points)}`,
+      subject: `Commission claim initiated: ${claim.broker} requested ${formatRupees(claim.points)}`,
       html: buildClaimEmailHtml(claim),
       text: buildClaimEmailText(claim)
     })
@@ -123,8 +123,8 @@ function buildClaimEmailHtml(claim: ClaimRow) {
 
   return `
     <div style="font-family:Arial,sans-serif;color:#171321;line-height:1.5">
-      <h1 style="font-size:22px;margin:0 0 12px">Payout claim initiated</h1>
-      <p style="margin:0 0 18px">A broker has requested a manual payout. Review the claim and transfer details before marking it as paid.</p>
+      <h1 style="font-size:22px;margin:0 0 12px">Commission claim initiated</h1>
+      <p style="margin:0 0 18px">A broker has requested a manual commission payout. Review the claim and transfer details before marking it as paid.</p>
       <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:620px">
         ${rows.map(([label, value]) => `
           <tr>
@@ -139,7 +139,7 @@ function buildClaimEmailHtml(claim: ClaimRow) {
 
 function buildClaimEmailText(claim: ClaimRow) {
   return [
-    'A broker has initiated a payout claim.',
+    'A broker has initiated a commission payout claim.',
     '',
     ...buildClaimRows(claim).map(([label, value]) => `${label}: ${value}`)
   ].join('\n');
@@ -149,8 +149,7 @@ function buildClaimRows(claim: ClaimRow) {
   return [
     ['Claim ID', claim.id],
     ['Broker', claim.broker],
-    ['Points claimed', String(claim.points)],
-    ['Payout amount', formatRupees(claim.points)],
+    ['Commission claimed', formatRupees(claim.points)],
     ['Status', claim.status],
     ['Account holder', claim.payout_account_name || 'Not added'],
     ['UPI ID', claim.payout_upi || 'Not added'],
