@@ -38,6 +38,7 @@ Then fill in:
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SITE_URL=https://digitquo.in
 SUPABASE_SERVICE_ROLE_KEY=
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
@@ -48,6 +49,7 @@ RAZORPAY_KEY_SECRET=
 Apply `database.sql` in the Supabase SQL editor before signing users up.
 `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL` are used by the server routes that email sellers and broker invoices after paid orders.
 `NEXT_PUBLIC_RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` are used to create and verify Razorpay payments before broker orders are saved.
+`NEXT_PUBLIC_SITE_URL` should be set to the production domain, for example `https://digitquo.in`, so auth redirects return to the custom domain.
 
 Start the Next.js development server:
 

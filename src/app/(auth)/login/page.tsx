@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, ShieldIcon } from '../../../components/ui/icons';
-import { routeForProfile } from '../../../lib/utils';
+import { getAuthCallbackUrl, routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
 import { ensureUserProfile } from '../../../lib/profile';
 
@@ -74,7 +74,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: getAuthCallbackUrl(),
       },
     });
     if (error) setError(error.message);

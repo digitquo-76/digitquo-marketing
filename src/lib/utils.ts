@@ -35,6 +35,15 @@ export function safeImageUrl(url: string): string {
   return /^(https?:\/\/|data:image\/)/i.test(url) ? url : '';
 }
 
+export function getAuthCallbackUrl() {
+  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '');
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(currentOrigin);
+  const origin = isLocalOrigin ? currentOrigin : configuredOrigin || currentOrigin;
+
+  return `${origin}/auth/callback`;
+}
+
 export function routeForRole(role: string) {
   if (role === 'admin') return '/admin';
   if (role === 'broker') return '/broker';
