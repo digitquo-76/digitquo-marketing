@@ -38,9 +38,13 @@ Then fill in:
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
 ```
 
 Apply `database.sql` in the Supabase SQL editor before signing users up.
+`SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL` are used by the server route that emails sellers when brokers place orders.
 
 Start the Next.js development server:
 

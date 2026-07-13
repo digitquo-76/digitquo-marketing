@@ -176,6 +176,24 @@ export function useDigitQuoStore() {
     const newSale = mapSaleFromDB(data);
     setSalesState(prev => [newSale, ...prev]);
     setProductsState(prev => prev.map((product) => product.id === newSale.productId ? { ...product, stock: Math.max(0, product.stock - newSale.quantity) } : product));
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (accessToken) {
+        await fetch('/api/orders/notify-seller', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ orderId: newSale.id })
+        });
+      }
+    } catch {
+      // The order is already saved; seller email notification is best-effort.
+    }
+
     return newSale;
   };
 
