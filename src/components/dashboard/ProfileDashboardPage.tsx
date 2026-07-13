@@ -48,6 +48,11 @@ export function ProfileDashboardPage() {
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('retail');
   const [market, setMarket] = useState('');
+  const [payoutAccountName, setPayoutAccountName] = useState('');
+  const [payoutBankName, setPayoutBankName] = useState('');
+  const [payoutAccountNumber, setPayoutAccountNumber] = useState('');
+  const [payoutIfsc, setPayoutIfsc] = useState('');
+  const [payoutUpi, setPayoutUpi] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -67,6 +72,11 @@ export function ProfileDashboardPage() {
     setBusinessName(store.profile.business_name || '');
     setBusinessType(store.profile.business_type || 'retail');
     setMarket(store.profile.market || '');
+    setPayoutAccountName(store.profile.payout_account_name || '');
+    setPayoutBankName(store.profile.payout_bank_name || '');
+    setPayoutAccountNumber(store.profile.payout_account_number || '');
+    setPayoutIfsc(store.profile.payout_ifsc || '');
+    setPayoutUpi(store.profile.payout_upi || '');
   }, [store.profile, store.user]);
 
   if (store.loading || !store.user || !store.profile?.role || !isProfileComplete(store.profile)) {
@@ -78,6 +88,12 @@ export function ProfileDashboardPage() {
 
   const saveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    if (role === 'broker' && !hasPayoutDetails({ payoutAccountName, payoutBankName, payoutAccountNumber, payoutIfsc, payoutUpi })) {
+      store.showToast('Add the account holder name and either UPI ID or bank account details.', 'error');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -86,6 +102,11 @@ export function ProfileDashboardPage() {
         business_name: role === 'seller' ? businessName.trim() : null,
         business_type: role === 'seller' ? businessType : null,
         market: role === 'broker' ? market.trim() : null,
+        payout_account_name: role === 'broker' ? payoutAccountName.trim() : null,
+        payout_bank_name: role === 'broker' ? payoutBankName.trim() : null,
+        payout_account_number: role === 'broker' ? payoutAccountNumber.trim() : null,
+        payout_ifsc: role === 'broker' ? payoutIfsc.trim().toUpperCase() : null,
+        payout_upi: role === 'broker' ? payoutUpi.trim() : null,
         onboarding_complete: true,
       } as any);
       store.showToast('Profile updated.', 'success');
@@ -161,10 +182,36 @@ export function ProfileDashboardPage() {
               )}
 
               {role === 'broker' && (
-                <label className="form-group full">
-                  <span className="form-label">Target market / region</span>
-                  <input className="form-control" value={market} onChange={(event) => setMarket(event.target.value)} required />
-                </label>
+                <>
+                  <label className="form-group full">
+                    <span className="form-label">Target market / region</span>
+                    <input className="form-control" value={market} onChange={(event) => setMarket(event.target.value)} required />
+                  </label>
+                  <div className="form-section-heading full">
+                    <h3>Payout account details</h3>
+                    <p>These details are sent to admin when you claim points for manual transfer.</p>
+                  </div>
+                  <label className="form-group full">
+                    <span className="form-label">Account holder name</span>
+                    <input className="form-control" value={payoutAccountName} onChange={(event) => setPayoutAccountName(event.target.value)} required />
+                  </label>
+                  <label className="form-group">
+                    <span className="form-label">UPI ID</span>
+                    <input className="form-control" value={payoutUpi} onChange={(event) => setPayoutUpi(event.target.value)} placeholder="name@bank" />
+                  </label>
+                  <label className="form-group">
+                    <span className="form-label">Bank name</span>
+                    <input className="form-control" value={payoutBankName} onChange={(event) => setPayoutBankName(event.target.value)} placeholder="Required if UPI is empty" />
+                  </label>
+                  <label className="form-group">
+                    <span className="form-label">Account number</span>
+                    <input className="form-control" inputMode="numeric" value={payoutAccountNumber} onChange={(event) => setPayoutAccountNumber(event.target.value)} placeholder="Required if UPI is empty" />
+                  </label>
+                  <label className="form-group">
+                    <span className="form-label">IFSC code</span>
+                    <input className="form-control" value={payoutIfsc} onChange={(event) => setPayoutIfsc(event.target.value.toUpperCase())} placeholder="Required if UPI is empty" />
+                  </label>
+                </>
               )}
             </div>
             {role !== 'admin' && (
@@ -178,4 +225,14 @@ export function ProfileDashboardPage() {
       <ToastRegion toasts={store.toasts} />
     </>
   );
+}
+
+function hasPayoutDetails(values: { payoutAccountName: string; payoutBankName: string; payoutAccountNumber: string; payoutIfsc: string; payoutUpi: string }) {
+  const accountName = values.payoutAccountName.trim();
+  const upi = values.payoutUpi.trim();
+  const bank = values.payoutBankName.trim();
+  const accountNumber = values.payoutAccountNumber.trim();
+  const ifsc = values.payoutIfsc.trim();
+
+  return Boolean(accountName && (upi || (bank && accountNumber && ifsc)));
 }

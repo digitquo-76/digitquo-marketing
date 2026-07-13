@@ -86,6 +86,8 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
   const totalPointsEarned = sales.reduce((sum, sale) => sum + (sale.points || 0), 0);
   const pointsClaimed = brokerClaims.reduce((sum, claim) => sum + claim.points, 0);
   const availablePoints = totalPointsEarned - pointsClaimed;
+  const payoutDetails = getPayoutDetails(store.profile);
+  const hasPayoutDetails = Boolean(payoutDetails.accountName && (payoutDetails.upi || (payoutDetails.bankName && payoutDetails.accountNumber && payoutDetails.ifsc)));
 
   const activeProduct = productId ? store.products.find((p) => p.id === productId) : null;
   const activeProductInStock = Boolean(activeProduct && activeProduct.stock > 0);
@@ -167,8 +169,27 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
 
   const claimPoints = async () => {
     if (availablePoints <= 0) return;
+    if (!hasPayoutDetails) {
+      store.showToast('Add payout account details in your profile before claiming points.', 'error');
+      router.push('/profile');
+      return;
+    }
+
     try {
-      await store.addClaim({ broker: currentBroker, points: availablePoints });
+      await store.addClaim({
+        broker: currentBroker,
+        points: availablePoints,
+        payoutAccountName: payoutDetails.accountName,
+        payoutBankName: payoutDetails.bankName,
+        payoutAccountNumber: payoutDetails.accountNumber,
+        payoutIfsc: payoutDetails.ifsc,
+        payoutUpi: payoutDetails.upi
+      });
+      try {
+        await store.addActivity('sale', `${currentBroker} requested payout of ${availablePoints} pts (${formatCurrency(availablePoints)}). Check the Claims & Payouts page for account details.`);
+      } catch {
+        // The claim is saved; activity is only an admin-facing notification.
+      }
       store.showToast(`Claimed ${availablePoints} points. Payout will be processed within 24 hours.`, 'success');
     } catch (error) {
       store.showToast(error instanceof Error ? error.message : 'Could not create payout claim.', 'error');
@@ -357,6 +378,29 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
             <section className="dashboard-card" style={{ marginTop: '2rem' }}>
               <header className="dashboard-card-header">
                 <div>
+                  <h2 className="dashboard-card-title">Payout account</h2>
+                  <p className="dashboard-card-subtitle">Used by admin for manual transfers after claims</p>
+                </div>
+                <Link className="btn-dashboard btn-dashboard-secondary" href="/profile">Edit details</Link>
+              </header>
+              <div className="dashboard-card-body">
+                {hasPayoutDetails ? (
+                  <div className="payout-detail-grid">
+                    <DetailItem label="Account holder" value={payoutDetails.accountName} />
+                    <DetailItem label="UPI ID" value={payoutDetails.upi || 'Not added'} />
+                    <DetailItem label="Bank name" value={payoutDetails.bankName || 'Not added'} />
+                    <DetailItem label="Account number" value={payoutDetails.accountNumber || 'Not added'} />
+                    <DetailItem label="IFSC" value={payoutDetails.ifsc || 'Not added'} />
+                  </div>
+                ) : (
+                  <p className="page-description">Add account holder name and either UPI ID or bank details before claiming points.</p>
+                )}
+              </div>
+            </section>
+
+            <section className="dashboard-card" style={{ marginTop: '2rem' }}>
+              <header className="dashboard-card-header">
+                <div>
                   <h2 className="dashboard-card-title">Claim history</h2>
                   <p className="dashboard-card-subtitle">Past payouts requested</p>
                 </div>
@@ -465,6 +509,25 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
       <ToastRegion toasts={store.toasts} />
     </>
   );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="payout-detail-item">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function getPayoutDetails(profile: any) {
+  return {
+    accountName: String(profile?.payout_account_name || '').trim(),
+    bankName: String(profile?.payout_bank_name || '').trim(),
+    accountNumber: String(profile?.payout_account_number || '').trim(),
+    ifsc: String(profile?.payout_ifsc || '').trim().toUpperCase(),
+    upi: String(profile?.payout_upi || '').trim()
+  };
 }
 
 async function createRazorpayOrder(productId: string, quantity: number) {

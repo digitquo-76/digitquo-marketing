@@ -16,6 +16,11 @@ export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('retail');
   const [market, setMarket] = useState('');
+  const [payoutAccountName, setPayoutAccountName] = useState('');
+  const [payoutBankName, setPayoutBankName] = useState('');
+  const [payoutAccountNumber, setPayoutAccountNumber] = useState('');
+  const [payoutIfsc, setPayoutIfsc] = useState('');
+  const [payoutUpi, setPayoutUpi] = useState('');
   const [userId, setUserId] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
@@ -56,6 +61,11 @@ export default function OnboardingPage() {
       setBusinessName(profile.business_name || '');
       setBusinessType(profile.business_type || 'retail');
       setMarket(profile.market || '');
+      setPayoutAccountName(profile.payout_account_name || '');
+      setPayoutBankName(profile.payout_bank_name || '');
+      setPayoutAccountNumber(profile.payout_account_number || '');
+      setPayoutIfsc(profile.payout_ifsc || '');
+      setPayoutUpi(profile.payout_upi || '');
       setLoading(false);
     }
 
@@ -85,6 +95,11 @@ export default function OnboardingPage() {
       return;
     }
 
+    if (role === 'broker' && !hasPayoutDetails({ payoutAccountName, payoutBankName, payoutAccountNumber, payoutIfsc, payoutUpi })) {
+      setError('Add the account holder name and either UPI ID or bank account details for manual payouts.');
+      return;
+    }
+
     setSubmitting(true);
     const displayName = role === 'seller' ? businessName.trim() : name.trim() || email;
     const update = {
@@ -93,6 +108,11 @@ export default function OnboardingPage() {
       business_name: role === 'seller' ? businessName.trim() : null,
       business_type: role === 'seller' ? businessType : null,
       market: role === 'broker' ? market.trim() : null,
+      payout_account_name: role === 'broker' ? payoutAccountName.trim() : null,
+      payout_bank_name: role === 'broker' ? payoutBankName.trim() : null,
+      payout_account_number: role === 'broker' ? payoutAccountNumber.trim() : null,
+      payout_ifsc: role === 'broker' ? payoutIfsc.trim().toUpperCase() : null,
+      payout_upi: role === 'broker' ? payoutUpi.trim() : null,
       onboarding_complete: true,
     };
 
@@ -116,6 +136,11 @@ export default function OnboardingPage() {
         business_name: update.business_name,
         business_type: update.business_type,
         market: update.market,
+        payout_account_name: update.payout_account_name,
+        payout_bank_name: update.payout_bank_name,
+        payout_account_number: update.payout_account_number,
+        payout_ifsc: update.payout_ifsc,
+        payout_upi: update.payout_upi,
       }
     });
 
@@ -173,9 +198,32 @@ export default function OnboardingPage() {
                 </div>
               </div>
             ) : (
-              <div className="auth-field-group">
-                <label className="auth-label" htmlFor="market">Target market / region</label>
-                <input id="market" className="auth-field" required value={market} onChange={(event) => setMarket(event.target.value)} placeholder="e.g. North India" />
+              <div className="auth-dynamic-fields">
+                <div className="auth-field-group">
+                  <label className="auth-label" htmlFor="market">Target market / region</label>
+                  <input id="market" className="auth-field" required value={market} onChange={(event) => setMarket(event.target.value)} placeholder="e.g. North India" />
+                </div>
+                <div className="auth-field-group">
+                  <label className="auth-label" htmlFor="payoutAccountName">Account holder name</label>
+                  <input id="payoutAccountName" className="auth-field" required value={payoutAccountName} onChange={(event) => setPayoutAccountName(event.target.value)} placeholder="Name on bank account or UPI" />
+                </div>
+                <div className="auth-field-group">
+                  <label className="auth-label" htmlFor="payoutUpi">UPI ID</label>
+                  <input id="payoutUpi" className="auth-field" value={payoutUpi} onChange={(event) => setPayoutUpi(event.target.value)} placeholder="name@bank" />
+                </div>
+                <div className="auth-form-divider"><span>Or add bank account details</span></div>
+                <div className="auth-field-group">
+                  <label className="auth-label" htmlFor="payoutBankName">Bank name</label>
+                  <input id="payoutBankName" className="auth-field" value={payoutBankName} onChange={(event) => setPayoutBankName(event.target.value)} placeholder="Bank name" />
+                </div>
+                <div className="auth-field-group">
+                  <label className="auth-label" htmlFor="payoutAccountNumber">Account number</label>
+                  <input id="payoutAccountNumber" className="auth-field" inputMode="numeric" value={payoutAccountNumber} onChange={(event) => setPayoutAccountNumber(event.target.value)} placeholder="Account number" />
+                </div>
+                <div className="auth-field-group">
+                  <label className="auth-label" htmlFor="payoutIfsc">IFSC code</label>
+                  <input id="payoutIfsc" className="auth-field" value={payoutIfsc} onChange={(event) => setPayoutIfsc(event.target.value.toUpperCase())} placeholder="IFSC code" />
+                </div>
               </div>
             )}
 
@@ -187,4 +235,14 @@ export default function OnboardingPage() {
       </section>
     </main>
   );
+}
+
+function hasPayoutDetails(values: { payoutAccountName: string; payoutBankName: string; payoutAccountNumber: string; payoutIfsc: string; payoutUpi: string }) {
+  const accountName = values.payoutAccountName.trim();
+  const upi = values.payoutUpi.trim();
+  const bank = values.payoutBankName.trim();
+  const accountNumber = values.payoutAccountNumber.trim();
+  const ifsc = values.payoutIfsc.trim();
+
+  return Boolean(accountName && (upi || (bank && accountNumber && ifsc)));
 }

@@ -15,6 +15,11 @@ type Profile = {
   business_name?: string | null;
   business_type?: string | null;
   market?: string | null;
+  payout_account_name?: string | null;
+  payout_bank_name?: string | null;
+  payout_account_number?: string | null;
+  payout_ifsc?: string | null;
+  payout_upi?: string | null;
   onboarding_complete?: boolean | null;
 };
 
@@ -360,10 +365,32 @@ function mapSaleFromDB(s: any): Sale {
 }
 
 function mapClaimToDB(c: Claim) {
-  return { id: c.id, broker: c.broker, points: c.points, status: c.status, created_at: c.createdAt };
+  return {
+    id: c.id,
+    broker: c.broker,
+    points: c.points,
+    payout_account_name: c.payoutAccountName || null,
+    payout_bank_name: c.payoutBankName || null,
+    payout_account_number: c.payoutAccountNumber || null,
+    payout_ifsc: c.payoutIfsc || null,
+    payout_upi: c.payoutUpi || null,
+    status: c.status,
+    created_at: c.createdAt
+  };
 }
 function mapClaimFromDB(c: any): Claim {
-  return { id: c.id, broker: c.broker, points: c.points, status: c.status as any, createdAt: c.created_at };
+  return {
+    id: c.id,
+    broker: c.broker,
+    points: c.points,
+    payoutAccountName: c.payout_account_name || '',
+    payoutBankName: c.payout_bank_name || '',
+    payoutAccountNumber: c.payout_account_number || '',
+    payoutIfsc: c.payout_ifsc || '',
+    payoutUpi: c.payout_upi || '',
+    status: c.status as any,
+    createdAt: c.created_at
+  };
 }
 
 function mapActivityToDB(a: Activity) {

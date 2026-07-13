@@ -356,6 +356,23 @@
   padding-top: var(--space-xs);
 }
 
+.auth-form-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: 650;
+}
+
+.auth-form-divider::before,
+.auth-form-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: rgba(109, 40, 217, 0.14);
+}
+
 .auth-loading {
   width: min(420px, 100%);
   margin: auto;

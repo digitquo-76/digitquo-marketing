@@ -19,6 +19,11 @@ function RegisterForm() {
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('retail');
   const [market, setMarket] = useState('');
+  const [payoutAccountName, setPayoutAccountName] = useState('');
+  const [payoutBankName, setPayoutBankName] = useState('');
+  const [payoutAccountNumber, setPayoutAccountNumber] = useState('');
+  const [payoutIfsc, setPayoutIfsc] = useState('');
+  const [payoutUpi, setPayoutUpi] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +61,11 @@ function RegisterForm() {
       return;
     }
 
+    if (role === 'broker' && !hasPayoutDetails({ payoutAccountName, payoutBankName, payoutAccountNumber, payoutIfsc, payoutUpi })) {
+      setError('Add the account holder name and either UPI ID or bank account details for manual payouts.');
+      return;
+    }
+
     setSubmitting(true);
     const displayName = role === 'seller' ? businessName.trim() : name.trim();
 
@@ -70,6 +80,11 @@ function RegisterForm() {
           business_name: role === 'seller' ? businessName.trim() : null,
           business_type: role === 'seller' ? businessType : null,
           market: role === 'broker' ? market.trim() : null,
+          payout_account_name: role === 'broker' ? payoutAccountName.trim() : null,
+          payout_bank_name: role === 'broker' ? payoutBankName.trim() : null,
+          payout_account_number: role === 'broker' ? payoutAccountNumber.trim() : null,
+          payout_ifsc: role === 'broker' ? payoutIfsc.trim().toUpperCase() : null,
+          payout_upi: role === 'broker' ? payoutUpi.trim() : null,
         }
       }
     });
@@ -206,6 +221,27 @@ function RegisterForm() {
                       <label className="auth-label" htmlFor="market">Target market / region</label>
                       <input id="market" type="text" required className="auth-field" placeholder="e.g. North India" value={market} onChange={(event) => setMarket(event.target.value)} />
                     </div>
+                    <div className="auth-field-group">
+                      <label className="auth-label" htmlFor="payoutAccountName">Account holder name</label>
+                      <input id="payoutAccountName" type="text" required className="auth-field" placeholder="Name on bank account or UPI" value={payoutAccountName} onChange={(event) => setPayoutAccountName(event.target.value)} />
+                    </div>
+                    <div className="auth-field-group">
+                      <label className="auth-label" htmlFor="payoutUpi">UPI ID</label>
+                      <input id="payoutUpi" type="text" className="auth-field" placeholder="name@bank" value={payoutUpi} onChange={(event) => setPayoutUpi(event.target.value)} />
+                    </div>
+                    <div className="auth-form-divider"><span>Or add bank account details</span></div>
+                    <div className="auth-field-group">
+                      <label className="auth-label" htmlFor="payoutBankName">Bank name</label>
+                      <input id="payoutBankName" type="text" className="auth-field" placeholder="Bank name" value={payoutBankName} onChange={(event) => setPayoutBankName(event.target.value)} />
+                    </div>
+                    <div className="auth-field-group">
+                      <label className="auth-label" htmlFor="payoutAccountNumber">Account number</label>
+                      <input id="payoutAccountNumber" type="text" inputMode="numeric" className="auth-field" placeholder="Account number" value={payoutAccountNumber} onChange={(event) => setPayoutAccountNumber(event.target.value)} />
+                    </div>
+                    <div className="auth-field-group">
+                      <label className="auth-label" htmlFor="payoutIfsc">IFSC code</label>
+                      <input id="payoutIfsc" type="text" className="auth-field" placeholder="IFSC code" value={payoutIfsc} onChange={(event) => setPayoutIfsc(event.target.value.toUpperCase())} />
+                    </div>
                   </div>
                 )}
 
@@ -222,6 +258,16 @@ function RegisterForm() {
       </section>
     </main>
   );
+}
+
+function hasPayoutDetails(values: { payoutAccountName: string; payoutBankName: string; payoutAccountNumber: string; payoutIfsc: string; payoutUpi: string }) {
+  const accountName = values.payoutAccountName.trim();
+  const upi = values.payoutUpi.trim();
+  const bank = values.payoutBankName.trim();
+  const accountNumber = values.payoutAccountNumber.trim();
+  const ifsc = values.payoutIfsc.trim();
+
+  return Boolean(accountName && (upi || (bank && accountNumber && ifsc)));
 }
 
 export default function RegisterPage() {

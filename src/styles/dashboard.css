@@ -684,6 +684,56 @@ a {
   white-space: nowrap;
 }
 
+.payout-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.payout-detail-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 12px;
+  background: #fbfafe;
+}
+
+.payout-detail-item span {
+  color: var(--dashboard-muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.payout-detail-item strong {
+  color: var(--dashboard-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.claim-message {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid #ddcef2;
+  border-radius: 13px;
+  background: #f2ebff;
+}
+
+.claim-message strong {
+  color: var(--dashboard-purple-dark);
+}
+
+.claim-message p {
+  color: var(--dashboard-muted);
+  font-size: 0.8rem;
+}
+
 .catalog-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -861,6 +911,25 @@ a {
 
 .form-group.full {
   grid-column: 1 / -1;
+}
+
+.form-section-heading {
+  padding-top: 8px;
+}
+
+.form-section-heading.full {
+  grid-column: 1 / -1;
+}
+
+.form-section-heading h3 {
+  color: var(--dashboard-text);
+  font-size: 0.92rem;
+}
+
+.form-section-heading p {
+  margin-top: 3px;
+  color: var(--dashboard-muted);
+  font-size: 0.72rem;
 }
 
 .form-label {
@@ -1067,7 +1136,8 @@ textarea.form-control {
 @media (max-width: 620px) {
   .metrics-grid,
   .catalog-grid,
-  .form-grid {
+  .form-grid,
+  .payout-detail-grid {
     grid-template-columns: 1fr;
   }
 

@@ -57,6 +57,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
   const unitsSold = store.sales.reduce((sum, sale) => sum + sale.quantity, 0);
 
   const pendingClaimsCount = store.claims.filter(c => c.status === 'pending').length;
+  const pendingClaims = store.claims.filter(c => c.status === 'pending');
   const totalPaidOut = store.claims.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.points, 0);
 
   const markAsPaid = async (claimId: string, broker: string, points: number) => {
@@ -280,15 +281,27 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
                   <p className="dashboard-card-subtitle">Requested broker commissions</p>
                 </div>
               </header>
+              {pendingClaims.length > 0 && (
+                <div className="dashboard-card-body" style={{ paddingBottom: 0 }}>
+                  {pendingClaims.slice(0, 3).map((claim) => (
+                    <div className="claim-message" key={claim.id}>
+                      <strong>{claim.broker} requested {claim.points} pts ({formatCurrency(claim.points)})</strong>
+                      <p>Transfer manually using the payout details below, then mark the claim as paid.</p>
+                      <PayoutDetails claim={claim} />
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Claim ID</th><th>Broker</th><th>Points (Value)</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Claim ID</th><th>Broker</th><th>Points (Value)</th><th>Payout details</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
                   <tbody>
                     {store.claims.length ? store.claims.map((claim) => (
                       <tr key={claim.id}>
                         <td><span className="cell-title">{claim.id}</span></td>
                         <td>{claim.broker}</td>
                         <td>{claim.points} ({formatCurrency(claim.points)})</td>
+                        <td><PayoutDetails claim={claim} compact /></td>
                         <td>
                           {claim.status === 'paid' ? 
                             <span className="badge badge-success">Paid out</span> : 
@@ -303,7 +316,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
                           )}
                         </td>
                       </tr>
-                    )) : <EmptyRow colSpan={6} title="No claims found" text="Broker payout requests will appear here." />}
+                    )) : <EmptyRow colSpan={7} title="No claims found" text="Broker payout requests will appear here." />}
                   </tbody>
                 </table>
               </div>
@@ -313,5 +326,34 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
       </DashboardShell>
       <ToastRegion toasts={store.toasts} />
     </>
+  );
+}
+
+function PayoutDetails({ claim, compact = false }: { claim: any; compact?: boolean }) {
+  const details = [
+    ['Account holder', claim.payoutAccountName || 'Not added'],
+    ['UPI ID', claim.payoutUpi || 'Not added'],
+    ['Bank', claim.payoutBankName || 'Not added'],
+    ['Account no.', claim.payoutAccountNumber || 'Not added'],
+    ['IFSC', claim.payoutIfsc || 'Not added']
+  ];
+
+  if (compact) {
+    return (
+      <div className="cell-meta" style={{ minWidth: '220px', lineHeight: 1.55 }}>
+        {details.map(([label, value]) => <div key={label}><strong>{label}:</strong> {value}</div>)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="payout-detail-grid">
+      {details.map(([label, value]) => (
+        <div className="payout-detail-item" key={label}>
+          <span>{label}</span>
+          <strong>{value}</strong>
+        </div>
+      ))}
+    </div>
   );
 }

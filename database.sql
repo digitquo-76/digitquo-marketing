@@ -9,6 +9,11 @@ create table if not exists public.profiles (
   business_name text,
   business_type text,
   market text,
+  payout_account_name text,
+  payout_bank_name text,
+  payout_account_number text,
+  payout_ifsc text,
+  payout_upi text,
   onboarding_complete boolean not null default false,
   created_at timestamptz not null default timezone('utc'::text, now())
 );
@@ -16,6 +21,11 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists business_name text;
 alter table public.profiles add column if not exists business_type text;
 alter table public.profiles add column if not exists market text;
+alter table public.profiles add column if not exists payout_account_name text;
+alter table public.profiles add column if not exists payout_bank_name text;
+alter table public.profiles add column if not exists payout_account_number text;
+alter table public.profiles add column if not exists payout_ifsc text;
+alter table public.profiles add column if not exists payout_upi text;
 alter table public.profiles add column if not exists onboarding_complete boolean not null default false;
 
 create table if not exists public.products (
@@ -60,9 +70,20 @@ create table if not exists public.claims (
   id text primary key,
   broker text not null,
   points numeric(12, 2) not null check (points > 0),
+  payout_account_name text,
+  payout_bank_name text,
+  payout_account_number text,
+  payout_ifsc text,
+  payout_upi text,
   status text not null default 'pending' check (status in ('pending', 'paid')),
   created_at timestamptz not null default timezone('utc'::text, now())
 );
+
+alter table public.claims add column if not exists payout_account_name text;
+alter table public.claims add column if not exists payout_bank_name text;
+alter table public.claims add column if not exists payout_account_number text;
+alter table public.claims add column if not exists payout_ifsc text;
+alter table public.claims add column if not exists payout_upi text;
 
 create table if not exists public.activity (
   id text primary key,
@@ -113,6 +134,29 @@ security definer
 set search_path = public
 as $$
   select coalesce(onboarding_complete, false) from public.profiles where id = auth.uid()
+$$;
+
+create or replace function public.profile_has_payout_details(
+  p_account_name text,
+  p_bank_name text,
+  p_account_number text,
+  p_ifsc text,
+  p_upi text
+)
+returns boolean
+language sql
+immutable
+as $$
+  select
+    char_length(btrim(coalesce(p_account_name, ''))) > 0
+    and (
+      char_length(btrim(coalesce(p_upi, ''))) > 0
+      or (
+        char_length(btrim(coalesce(p_bank_name, ''))) > 0
+        and char_length(btrim(coalesce(p_account_number, ''))) > 0
+        and char_length(btrim(coalesce(p_ifsc, ''))) > 0
+      )
+    )
 $$;
 
 create or replace function public.place_order(
@@ -378,6 +422,11 @@ insert into public.profiles (
   business_name,
   business_type,
   market,
+  payout_account_name,
+  payout_bank_name,
+  payout_account_number,
+  payout_ifsc,
+  payout_upi,
   onboarding_complete
 )
 select
@@ -391,9 +440,24 @@ select
   case when users.raw_user_meta_data->>'role' = 'seller' then nullif(users.raw_user_meta_data->>'business_name', '') else null end as business_name,
   case when users.raw_user_meta_data->>'role' = 'seller' then nullif(users.raw_user_meta_data->>'business_type', '') else null end as business_type,
   case when users.raw_user_meta_data->>'role' = 'broker' then nullif(users.raw_user_meta_data->>'market', '') else null end as market,
+  case when users.raw_user_meta_data->>'role' = 'broker' then nullif(users.raw_user_meta_data->>'payout_account_name', '') else null end as payout_account_name,
+  case when users.raw_user_meta_data->>'role' = 'broker' then nullif(users.raw_user_meta_data->>'payout_bank_name', '') else null end as payout_bank_name,
+  case when users.raw_user_meta_data->>'role' = 'broker' then nullif(users.raw_user_meta_data->>'payout_account_number', '') else null end as payout_account_number,
+  case when users.raw_user_meta_data->>'role' = 'broker' then nullif(users.raw_user_meta_data->>'payout_ifsc', '') else null end as payout_ifsc,
+  case when users.raw_user_meta_data->>'role' = 'broker' then nullif(users.raw_user_meta_data->>'payout_upi', '') else null end as payout_upi,
   (
     (users.raw_user_meta_data->>'role' = 'seller' and nullif(users.raw_user_meta_data->>'business_name', '') is not null)
-    or (users.raw_user_meta_data->>'role' = 'broker' and nullif(users.raw_user_meta_data->>'market', '') is not null)
+    or (
+      users.raw_user_meta_data->>'role' = 'broker'
+      and nullif(users.raw_user_meta_data->>'market', '') is not null
+      and public.profile_has_payout_details(
+        users.raw_user_meta_data->>'payout_account_name',
+        users.raw_user_meta_data->>'payout_bank_name',
+        users.raw_user_meta_data->>'payout_account_number',
+        users.raw_user_meta_data->>'payout_ifsc',
+        users.raw_user_meta_data->>'payout_upi'
+      )
+    )
     or exists (select 1 from public.profiles existing where existing.id = users.id and existing.role = 'admin')
   ) as onboarding_complete
 from auth.users as users
@@ -405,7 +469,19 @@ update public.profiles
 set onboarding_complete = true
 where role = 'admin'
   or (role = 'seller' and nullif(business_name, '') is not null)
-  or (role = 'broker' and nullif(market, '') is not null);
+  or (
+    role = 'broker'
+    and nullif(market, '') is not null
+    and public.profile_has_payout_details(payout_account_name, payout_bank_name, payout_account_number, payout_ifsc, payout_upi)
+  );
+
+update public.profiles
+set onboarding_complete = false
+where role = 'broker'
+  and (
+    nullif(market, '') is null
+    or public.profile_has_payout_details(payout_account_name, payout_bank_name, payout_account_number, payout_ifsc, payout_upi) = false
+  );
 
 drop policy if exists "profiles read own or admin" on public.profiles;
 create policy "profiles read own or admin"
@@ -470,7 +546,11 @@ using (
 drop policy if exists "brokers create own claims" on public.claims;
 create policy "brokers create own claims"
 on public.claims for insert
-with check (public.current_profile_role() = 'broker' and broker = public.current_profile_name());
+with check (
+  public.current_profile_role() = 'broker'
+  and broker = public.current_profile_name()
+  and public.profile_has_payout_details(payout_account_name, payout_bank_name, payout_account_number, payout_ifsc, payout_upi)
+);
 
 drop policy if exists "admins update claims" on public.claims;
 create policy "admins update claims"

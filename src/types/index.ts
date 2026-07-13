@@ -35,6 +35,11 @@ export interface Claim {
   broker: string;
   points: number;
   status: 'pending' | 'paid';
+  payoutAccountName?: string;
+  payoutBankName?: string;
+  payoutAccountNumber?: string;
+  payoutIfsc?: string;
+  payoutUpi?: string;
   createdAt: string;
 }
 
