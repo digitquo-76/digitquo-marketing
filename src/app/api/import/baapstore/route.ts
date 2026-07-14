@@ -19,7 +19,7 @@ type ParsedProduct = {
   sourceUrl: string;
   name: string;
   category: string;
-  image: string;
+  images: string[];
   description: string;
   baapstorePrice: number;
   avgRetailPrice: number | null;
@@ -28,13 +28,64 @@ type ParsedProduct = {
 const TARGET_SELLER_EMAIL = 'ebrahimsekh06s@gmail.com';
 const PRICE_ADD_ON = 40;
 const MARKUP_RATE = 0.15;
-const COMMISSION_RATE_ON_MARKUP = 0.12;
+const COMMISSION_RATE_ON_MARKUP = 0.8;
 const MAX_PAGES_PER_REQUEST = 50;
 const MAX_PRODUCTS_PER_REQUEST = 700;
+const DETAIL_IMAGE_CONCURRENCY = 5;
+const BAAPSTORE_CATEGORY_PATHS: Record<string, string> = {
+  'bags-wallets': '191',
+  bedding: '241',
+  blouse: '206',
+  cables: '225',
+  'dupatta-and-stoles': '190',
+  fashion: '13',
+  'fashion-accessories': '211',
+  footwear: '52',
+  'hair-care': '248',
+  'home-accessories': '200',
+  innerwear: '58',
+  jewels: '25',
+  'kids-dress': '213',
+  kitchenware: '21',
+  'lip-care': '249',
+  'men-shirts': '178',
+  'men-tshirts': '182',
+  'mens-bottom-wear': '230',
+  'mens-footwear': '195',
+  'mens-jacket': '202',
+  'mens-kurta': '231',
+  'mob-accessories': '17',
+  'mobile-case-cover': '187',
+  mugs: '205',
+  nightlamps: '242',
+  'night-wears': '210',
+  'panties-slips': '60',
+  'personal-care': '18',
+  'phone-accessories': '198',
+  remotes: '226',
+  'salwar-material': '170',
+  sarees: '169',
+  seeds: '247',
+  socks: '239',
+  stationary: '203',
+  'storage-organisation': '246',
+  toys: '201',
+  'unisex-footwear': '234',
+  'womens-bottom-wear': '30',
+  'womens-dress': '233',
+  'womens-footwear': '196',
+  'womens-kurti': '175',
+  'womens-kurti-sets': '222',
+  'womens-t-shirts': '217',
+  'womenst-tops': '199'
+};
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
@@ -131,7 +182,8 @@ export async function POST(request: NextRequest) {
   }
 
   const uniqueProducts = dedupeProducts(parsedProducts).slice(0, MAX_PRODUCTS_PER_REQUEST);
-  const rows = uniqueProducts.map((product) => toProductRow(product, sellerName, stock));
+  const productsWithImages = await enrichProductsWithDetailImages(uniqueProducts);
+  const rows = productsWithImages.map((product) => toProductRow(product, sellerName, stock));
   const existingIds = await getExistingProductIds(serviceClient, rows.map((row) => row.id));
 
   if (!dryRun && rows.length) {
@@ -173,8 +225,9 @@ export async function POST(request: NextRequest) {
       mrp: row.mrp,
       commission: row.commission,
       stock: row.stock,
-      image: row.image,
-      sourceUrl: uniqueProducts.find((product) => `baapstore_${product.sourceId}` === row.id)?.sourceUrl || ''
+      image: getSerializedProductImages(row.image)[0] || '',
+      imageCount: getSerializedProductImages(row.image).length,
+      sourceUrl: productsWithImages.find((product) => `baapstore_${product.sourceId}` === row.id)?.sourceUrl || ''
     }))
   });
 }
@@ -198,8 +251,17 @@ async function fetchBaapstoreHtml(url: string) {
     const warmedResponse = response.status === 403 ? await fetchAfterCookieWarmup(url) : null;
     if (warmedResponse?.ok) return warmedResponse.text();
 
+    const fallbackUrl = getCategoryFallbackUrl(url);
+    if (fallbackUrl && fallbackUrl !== url) {
+      const fallbackResponse = await fetchWithBrowserHeaders(fallbackUrl);
+      if (fallbackResponse.ok) return fallbackResponse.text();
+
+      const warmedFallbackResponse = fallbackResponse.status === 403 ? await fetchAfterCookieWarmup(fallbackUrl) : null;
+      if (warmedFallbackResponse?.ok) return warmedFallbackResponse.text();
+    }
+
     const blockedReason = response.status === 403
-      ? ' Baapstore may be blocking this server IP or automated requests for that page.'
+      ? ' Baapstore may be blocking this server IP or automated requests for that page. The importer also tried the category fallback URL when available.'
       : '';
     throw new Error(`Baapstore returned ${response.status} for ${url}.${blockedReason}`);
   }
@@ -227,10 +289,40 @@ function fetchWithBrowserHeaders(url: string, cookie = '') {
       'Accept-Language': 'en-IN,en;q=0.9,hi;q=0.8',
       'Cache-Control': 'no-cache',
       Pragma: 'no-cache',
-      Referer: target.origin,
+      Referer: `${target.origin}/`,
+      'Sec-CH-UA': '"Google Chrome";v="126", "Chromium";v="126", "Not-A.Brand";v="24"',
+      'Sec-CH-UA-Mobile': '?0',
+      'Sec-CH-UA-Platform': '"Windows"',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'same-origin',
+      'Upgrade-Insecure-Requests': '1',
       ...(cookie ? { Cookie: cookie } : {})
     }
   });
+}
+
+function getCategoryFallbackUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const slug = decodeURIComponent(url.pathname.split('/').filter(Boolean)[0] || '').toLowerCase();
+    const path = BAAPSTORE_CATEGORY_PATHS[slug];
+    if (!path) return '';
+
+    const fallback = new URL('/index.php', url.origin);
+    fallback.searchParams.set('route', 'product/category');
+    fallback.searchParams.set('path', path);
+
+    const page = url.searchParams.get('page');
+    if (page) fallback.searchParams.set('page', page);
+
+    const limit = url.searchParams.get('limit');
+    if (limit) fallback.searchParams.set('limit', limit);
+
+    return fallback.toString();
+  } catch {
+    return '';
+  }
 }
 
 function collectCookies(response: Response) {
@@ -260,12 +352,12 @@ function parseProductCard(card: string, category: string, pageUrl: URL): ParsedP
 
   if (!sourceId) return null;
 
-  const image = decodeHtml(getMatch(card, /<img[^>]+src="([^"]+)"/i) || '');
+  const image = normalizeBaapstoreImageUrl(decodeHtml(getMatch(card, /<img[^>]+src="([^"]+)"/i) || ''));
   const name = limitText(
-    decodeHtml(getMatch(card, /<div[^>]+class="name"[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/i) || getMatch(card, /<img[^>]+alt="([^"]+)"/i) || sourceId),
+    cleanProductText(decodeHtml(getMatch(card, /<div[^>]+class="name"[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/i) || getMatch(card, /<img[^>]+alt="([^"]+)"/i) || sourceId)),
     120
   );
-  const description = limitText(decodeHtml(stripTags(getMatch(card, /<div[^>]+class="description"[^>]*>([\s\S]*?)<\/div>/i) || '')), 700);
+  const description = limitText(cleanProductText(decodeHtml(stripTags(getMatch(card, /<div[^>]+class="description"[^>]*>([\s\S]*?)<\/div>/i) || ''))), 700);
   const baapstorePrice = parseFirstPrice(card);
   const avgRetailPrice = parsePrice(getMatch(card, /Avg\s+Retail\s+Price:\s*[^0-9]*([0-9][0-9,.]*)/i) || '');
 
@@ -276,7 +368,7 @@ function parseProductCard(card: string, category: string, pageUrl: URL): ParsedP
     sourceUrl: productUrl || pageUrl.toString(),
     name,
     category,
-    image,
+    images: image ? [image] : [],
     description,
     baapstorePrice,
     avgRetailPrice
@@ -285,14 +377,6 @@ function parseProductCard(card: string, category: string, pageUrl: URL): ParsedP
 
 function toProductRow(product: ParsedProduct, seller: string, stock: number): ProductRow {
   const priceParts = calculatePrice(product.baapstorePrice);
-  const descriptionLines = [
-    product.description,
-    '',
-    `Baapstore source price: Rs ${formatMoney(product.baapstorePrice)}`,
-    product.avgRetailPrice ? `Baapstore avg retail price: Rs ${formatMoney(product.avgRetailPrice)}` : '',
-    `DigitQuo formula: (source price + Rs ${PRICE_ADD_ON}) + ${MARKUP_RATE * 100}% markup`,
-    `Source: ${product.sourceUrl}`
-  ].filter(Boolean);
 
   return {
     id: `baapstore_${product.sourceId}`,
@@ -303,9 +387,109 @@ function toProductRow(product: ParsedProduct, seller: string, stock: number): Pr
     commission: priceParts.commission,
     stock,
     seller,
-    image: product.image,
-    description: descriptionLines.join('\n')
+    image: serializeProductImages(product.images),
+    description: product.description
   };
+}
+
+async function enrichProductsWithDetailImages(products: ParsedProduct[]) {
+  const enriched = products.map((product) => ({ ...product, images: mergeProductImages(product.images) }));
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < enriched.length) {
+      const index = cursor;
+      cursor += 1;
+      const product = enriched[index];
+
+      if (!product?.sourceUrl) continue;
+
+      try {
+        const html = await fetchBaapstoreHtml(product.sourceUrl);
+        const detailImages = parseDetailImages(html, product.sourceId);
+        if (detailImages.length) {
+          product.images = mergeProductImages([...detailImages, ...product.images]);
+        }
+      } catch {
+        product.images = mergeProductImages(product.images);
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(DETAIL_IMAGE_CONCURRENCY, enriched.length) }, () => worker()));
+  return enriched;
+}
+
+function parseDetailImages(html: string, sourceId: string) {
+  const pid = sourceId.replace(/\D/g, '');
+  const normalizedHtml = html.replace(/\\\//g, '/');
+  const matches = Array.from(normalizedHtml.matchAll(/(?:https?:\/\/)?baapstore-images\.blr1\.cdn\.digitaloceanspaces\.com\/[^"'<>\s)]+/gi))
+    .map((match) => normalizeBaapstoreImageUrl(match[0]))
+    .filter(Boolean);
+
+  const productImages = matches.filter((image) => {
+    const lower = image.toLowerCase();
+    return lower.includes('size-chart') || lower.includes(`pid-${pid}`) || lower.includes(`pid${pid}`);
+  });
+
+  return mergeProductImages(productImages);
+}
+
+function mergeProductImages(images: string[]) {
+  const bestByImage = new Map<string, string>();
+
+  images
+    .map(normalizeBaapstoreImageUrl)
+    .filter(Boolean)
+    .forEach((image) => {
+      const key = image.replace(/-\d+x\d+(?=\.[a-z]+$)/i, '');
+      const current = bestByImage.get(key);
+      if (!current || imageRank(image) > imageRank(current)) {
+        bestByImage.set(key, image);
+      }
+    });
+
+  return Array.from(bestByImage.values()).slice(0, 8);
+}
+
+function imageRank(image: string) {
+  const dimensions = image.match(/-(\d+)x(\d+)(?=\.[a-z]+$)/i);
+  if (!dimensions) return 0;
+  return Number(dimensions[1]) * Number(dimensions[2]);
+}
+
+function normalizeBaapstoreImageUrl(value: string) {
+  const clean = decodeHtml(value)
+    .replace(/^\/\//, 'https://')
+    .replace(/^baapstore-images\./i, 'https://baapstore-images.')
+    .split('?')[0]
+    .trim();
+
+  if (!clean) return '';
+  if (!/^https:\/\/baapstore-images\.blr1\.cdn\.digitaloceanspaces\.com\//i.test(clean)) return '';
+  return clean;
+}
+
+function serializeProductImages(images: string[]) {
+  const clean = mergeProductImages(images);
+  if (!clean.length) return '';
+  if (clean.length === 1) return clean[0];
+  return JSON.stringify(clean);
+}
+
+function getSerializedProductImages(value: string) {
+  const raw = cleanString(value);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map((item) => normalizeBaapstoreImageUrl(String(item || ''))).filter(Boolean);
+  } catch {
+    // Single-image products are stored as a plain URL.
+  }
+
+  const image = normalizeBaapstoreImageUrl(raw);
+  return image ? [image] : [];
 }
 
 function calculatePrice(sourcePrice: number) {
@@ -405,6 +589,14 @@ function decodeHtml(value: string) {
     .trim();
 }
 
+function cleanProductText(value: string) {
+  return cleanString(value)
+    .replace(/\bDropship(?:ping)?\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.)])/g, '$1')
+    .trim();
+}
+
 function cleanString(value: unknown) {
   return String(value || '').trim();
 }
@@ -421,9 +613,9 @@ function clampInteger(value: number, min: number, max: number) {
 }
 
 function roundMoney(value: number) {
-  return Number(value.toFixed(2));
+  return Math.round(value);
 }
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(Number(value || 0));
+  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(Number(value || 0)));
 }

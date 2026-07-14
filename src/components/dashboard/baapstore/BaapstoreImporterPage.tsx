@@ -18,6 +18,7 @@ type ImportProduct = {
   commission: number;
   stock: number;
   image: string;
+  imageCount?: number;
   sourceUrl: string;
 };
 
@@ -39,7 +40,7 @@ type ImportResult = {
 const TARGET_SELLER_EMAIL = 'ebrahimsekh06s@gmail.com';
 const PRICE_ADD_ON = 40;
 const MARKUP_RATE = 0.15;
-const COMMISSION_RATE_ON_MARKUP = 0.12;
+const COMMISSION_RATE_ON_MARKUP = 0.8;
 
 export function BaapstoreImporterPage() {
   const store = useDigitQuoStore();
@@ -207,7 +208,7 @@ export function BaapstoreImporterPage() {
                   </div>
                   <div className="importer-rule">
                     <span>Broker commission</span>
-                    <strong>12% of the 15% markup</strong>
+                    <strong>80% of the 15% markup</strong>
                   </div>
                   <p className="page-description">Example with a Baapstore price of Rs 165: product MRP becomes {formatMoney(sample.mrp)}, broker commission becomes {formatMoney(sample.commission)}.</p>
                 </div>
@@ -233,7 +234,7 @@ export function BaapstoreImporterPage() {
                 )}
                 <div className="table-wrap">
                   <table className="data-table importer-table">
-                    <thead><tr><th>Product</th><th>Category</th><th>MRP</th><th>Commission</th><th>Stock</th></tr></thead>
+                    <thead><tr><th>Product</th><th>Category</th><th>MRP</th><th>Commission</th><th>Images</th><th>Stock</th></tr></thead>
                     <tbody>
                       {result.products.map((product) => (
                         <tr key={product.id}>
@@ -250,6 +251,7 @@ export function BaapstoreImporterPage() {
                           <td>{product.category}</td>
                           <td>{formatCurrency(product.mrp)}</td>
                           <td>{formatMoney(product.commission)}</td>
+                          <td>{product.imageCount || 0}</td>
                           <td>{product.stock}</td>
                         </tr>
                       ))}
@@ -298,8 +300,8 @@ function calculatePrice(sourcePrice: number) {
   const subtotal = sourcePrice + PRICE_ADD_ON;
   const markup = subtotal * MARKUP_RATE;
   return {
-    mrp: subtotal + markup,
-    commission: markup * COMMISSION_RATE_ON_MARKUP
+    mrp: Math.round(subtotal + markup),
+    commission: Math.round(markup * COMMISSION_RATE_ON_MARKUP)
   };
 }
 
@@ -307,8 +309,8 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-    maximumFractionDigits: 2
-  }).format(Number(value || 0));
+    maximumFractionDigits: 0
+  }).format(Math.round(Number(value || 0)));
 }
 
 function getInitials(value: string) {
