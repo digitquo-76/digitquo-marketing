@@ -14,7 +14,7 @@ import { EmptyRow, Metric, ProductImage, ProductImageCarousel } from './Shared';
 import { OrderModal } from './Modals';
 import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
-import { ChartIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon } from '../ui/icons';
+import { BackIcon, ChartIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
 type BrokerSection = 'overview' | 'catalog' | 'sales' | 'analytics' | 'rewards' | 'product';
 
@@ -529,8 +529,8 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
         {section === 'product' && (
           activeProduct ? (
             <>
-              <section className="page-heading" style={{ marginBottom: '20px' }}>
-                <Link className="btn-dashboard btn-dashboard-secondary" href="/broker/catalog">Back to catalog</Link>
+              <section className="page-heading product-detail-heading">
+                <Link className="product-detail-back" href="/broker/catalog"><BackIcon /> Back to catalog</Link>
               </section>
 
               <div className="product-detail-layout">
@@ -538,27 +538,29 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                   <ProductImageCarousel product={activeProduct} key={activeProduct.id} />
                 </div>
                 <div className="product-detail-info">
-                  <p className="catalog-seller">{activeProduct.seller}</p>
-                  <h1 className="page-title" style={{ fontSize: '2rem', marginBottom: '10px' }}>{activeProduct.name}</h1>
-
-                  <div className="catalog-meta" style={{ padding: '16px 0', borderTop: '1px solid #e8e1f1', borderBottom: '1px solid #e8e1f1', marginBottom: '20px' }}>
+                  <div className="product-detail-eyebrow"><span>{activeProduct.category}</span><span>Product ID {activeProduct.id.slice(-8).toUpperCase()}</span></div>
+                  <h1 className="page-title product-detail-title">{activeProduct.name}</h1>
+                  <p className="product-detail-seller">Sold by <strong>{activeProduct.seller}</strong></p>
+                  <div className="product-detail-price-panel">
                     <div className="catalog-price-stack">
-                      <span className="catalog-price" style={{ fontSize: '1.8rem', color: '#dc2626' }}>{formatCurrency(activeProduct.mrp)}</span>
-                      <span className="catalog-commission" style={{ fontSize: '0.9rem' }}>Commission: {formatCurrency(activeProduct.commission)} per unit</span>
+                      <span className="product-detail-price">{formatCurrency(activeProduct.mrp)}</span>
+                      <span className="product-detail-tax">Inclusive of all taxes</span>
                     </div>
+                    <span className="product-detail-commission">Earn {formatCurrency(activeProduct.commission)} commission / unit</span>
                   </div>
 
-                  <div style={{ marginBottom: '24px' }}>
-                    <span style={{ color: activeProductInStock ? '#0f9f6e' : '#dc2626', fontWeight: 600, fontSize: '1.1rem', display: 'block', marginBottom: '8px' }}>{activeProductInStock ? 'In stock' : 'Out of stock'}</span>
-                    <span style={{ color: '#70657e', fontSize: '0.9rem' }}>{activeProduct.stock} units available. Ships from {activeProduct.seller}.</span>
+                  <div className={`product-detail-stock ${activeProductInStock ? 'available' : 'unavailable'}`}>
+                    <span className="product-detail-stock-dot" />
+                    <div><strong>{activeProductInStock ? 'In stock' : 'Out of stock'}</strong><p>{activeProduct.stock} units available · Ships from {activeProduct.seller}</p></div>
                   </div>
 
-                  <div style={{ marginBottom: '30px' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '8px' }}>About this item</h3>
-                    <p className="page-description" style={{ margin: 0, fontSize: '0.95rem' }}>{activeProduct.description || 'No description has been added by the seller yet.'}</p>
+                  <div className="product-detail-description-block">
+                    <h3>Product description</h3>
+                    <p>{activeProduct.description || 'No description has been added by the seller yet.'}</p>
                   </div>
 
-                  <button className="btn-dashboard btn-dashboard-primary" type="button" style={{ width: '100%', maxWidth: '300px', height: '48px', fontSize: '1rem' }} onClick={() => setOrderProduct(activeProduct)} disabled={!activeProductInStock}>{activeProductInStock ? 'Place order' : 'Unavailable'}</button>
+                  <button className="btn-dashboard btn-dashboard-primary product-detail-order-button" type="button" onClick={() => setOrderProduct(activeProduct)} disabled={!activeProductInStock}>{activeProductInStock ? 'Place order' : 'Unavailable'}</button>
+                  <p className="product-detail-order-note">Secure checkout · Order confirmation sent instantly</p>
                 </div>
               </div>
 

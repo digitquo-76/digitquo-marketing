@@ -1408,9 +1408,9 @@ html[data-route="dashboard"] body {
 .product-detail-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px;
+  gap: clamp(28px, 4vw, 58px);
   background: #ffffff;
-  padding: 30px;
+  padding: clamp(20px, 3vw, 38px);
   border-radius: 17px;
   border: 1px solid var(--dashboard-border);
   box-shadow: var(--dashboard-shadow);
@@ -1434,14 +1434,19 @@ html[data-route="dashboard"] body {
 .product-image-carousel {
   position: relative;
   width: 100%;
-  height: 400px;
+  display: grid;
+  height: auto;
+  gap: 14px;
   min-width: 0;
+}
+
+.product-image-carousel-stage {
+  position: relative;
+  height: 460px;
   overflow: hidden;
   border: 1px solid var(--dashboard-border);
   border-radius: 14px;
-  background:
-    radial-gradient(circle at 18% 14%, rgba(167, 139, 250, 0.15), transparent 12rem),
-    #ffffff;
+  background: #f8f7fa;
 }
 
 .product-image-carousel-track {
@@ -1591,6 +1596,11 @@ html[data-route="dashboard"] body {
   background: var(--dashboard-purple);
 }
 
+.product-image-thumbnails { display: flex; gap: 10px; overflow-x: auto; padding: 2px; scrollbar-width: thin; }
+.product-image-thumbnail { width: 70px; height: 70px; flex: 0 0 70px; padding: 4px; overflow: hidden; border: 1px solid var(--dashboard-border); border-radius: 9px; background: #fff; }
+.product-image-thumbnail img { width: 100%; height: 100%; object-fit: contain; }
+.product-image-thumbnail.active { border-color: var(--dashboard-purple); box-shadow: 0 0 0 2px rgba(109, 40, 217, .13); }
+
 .product-detail-info {
   display: flex;
   flex-direction: column;
@@ -1600,6 +1610,27 @@ html[data-route="dashboard"] body {
   margin-bottom: 16px;
   font-size: 2rem;
 }
+
+.product-detail-back { display: inline-flex; align-items: center; gap: 7px; color: var(--dashboard-muted); font-size: .82rem; font-weight: 700; text-decoration: none; }
+.product-detail-back:hover { color: var(--dashboard-purple); }
+.product-detail-eyebrow { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 12px; color: var(--dashboard-purple); font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.product-detail-eyebrow span:last-child { color: var(--dashboard-muted); }
+.product-detail-seller { margin: -7px 0 22px; color: var(--dashboard-muted); font-size: .84rem; }
+.product-detail-seller strong { color: var(--dashboard-text); }
+.product-detail-price-panel { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 0; border-top: 1px solid var(--dashboard-border); border-bottom: 1px solid var(--dashboard-border); }
+.product-detail-price { color: var(--dashboard-text); font-size: 2rem; font-weight: 800; line-height: 1; }
+.product-detail-tax { color: var(--dashboard-muted); font-size: .7rem; }
+.product-detail-commission { padding: 8px 11px; color: #087a55; border-radius: 8px; background: #e8fbf3; font-size: .76rem; font-weight: 750; text-align: center; }
+.product-detail-stock { display: flex; align-items: flex-start; gap: 11px; padding: 19px 0; border-bottom: 1px solid var(--dashboard-border); }
+.product-detail-stock-dot { width: 9px; height: 9px; flex: 0 0 auto; margin-top: 5px; border-radius: 50%; background: #dc2626; box-shadow: 0 0 0 4px #fee2e2; }
+.product-detail-stock.available .product-detail-stock-dot { background: #0f9f6e; box-shadow: 0 0 0 4px #dff8ef; }
+.product-detail-stock strong { font-size: .9rem; }
+.product-detail-stock p { margin-top: 4px; color: var(--dashboard-muted); font-size: .75rem; }
+.product-detail-description-block { padding: 20px 0; }
+.product-detail-description-block h3 { margin-bottom: 8px; font-size: .9rem; }
+.product-detail-description-block p { color: var(--dashboard-muted); font-size: .84rem; line-height: 1.65; white-space: pre-line; }
+.product-detail-order-button { width: 100%; min-height: 50px; font-size: .92rem; }
+.product-detail-order-note { margin-top: 9px; color: var(--dashboard-muted); font-size: .68rem; text-align: center; }
 
 .seller-product-edit-form {
   display: grid;
@@ -1748,8 +1779,9 @@ html[data-route="dashboard"] body {
   }
 
   .product-image-carousel {
-    height: min(88vw, 420px);
+    height: auto;
   }
+  .product-image-carousel-stage { height: min(88vw, 420px); }
 
   .order-checklist {
     grid-template-columns: 1fr;

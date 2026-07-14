@@ -90,6 +90,7 @@ export function ProductImageCarousel({ product }: { product: Product }) {
 
   return (
     <div className="product-image-carousel" role="region" aria-roledescription="carousel" aria-label={`${product.name} product photos`}>
+      <div className="product-image-carousel-stage">
       <div
         className="product-image-carousel-track"
         ref={trackRef}
@@ -148,19 +149,17 @@ export function ProductImageCarousel({ product }: { product: Product }) {
           <span className="product-image-carousel-count" aria-live="polite">
             {activeIndex + 1} / {slides.length}
           </span>
-          <div className="product-image-carousel-dots" role="group" aria-label="Choose a product image">
-            {slides.map((image, index) => (
-              <button
-                className={`product-image-carousel-dot${activeIndex === index ? ' active' : ''}`}
-                type="button"
-                onClick={() => showImage(index)}
-                aria-label={`Show image ${index + 1} of ${slides.length}`}
-                aria-pressed={activeIndex === index}
-                key={`${image.slice(0, 48)}-dot-${index}`}
-              />
-            ))}
-          </div>
         </>
+      )}
+      </div>
+      {hasMultipleImages && (
+        <div className="product-image-thumbnails" role="group" aria-label="Choose a product image">
+          {slides.map((image, index) => (
+            <button className={`product-image-thumbnail${activeIndex === index ? ' active' : ''}`} type="button" onClick={() => showImage(index)} aria-label={`Show image ${index + 1} of ${slides.length}`} aria-pressed={activeIndex === index} key={`${image.slice(0, 48)}-thumb-${index}`}>
+              {image ? <img src={image} alt="" /> : <span>{product.name.slice(0, 2).toUpperCase()}</span>}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
