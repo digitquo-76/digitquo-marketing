@@ -11,6 +11,7 @@ import { DashboardShell } from './DashboardShell';
 import { AnalyticsBarChart, AnalyticsRanking } from './Analytics';
 import { EmptyRow, Metric, ProductCell, ProductImageCarousel, StockBadge } from './Shared';
 import { PRODUCT_CATEGORIES, ProductModal } from './Modals';
+import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
 import { BackIcon, ChartIcon, EditIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, TrashIcon, UsersIcon } from '../ui/icons';
 
@@ -49,7 +50,7 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
     }
   }, [router, store.loading, store.profile, store.user]);
 
-  if (store.loading || !store.user || store.profile?.role !== 'seller' || !isProfileComplete(store.profile)) return <div style={{ padding: '40px' }}>Loading workspace...</div>;
+  if (store.loading || !store.user || store.profile?.role !== 'seller' || !isProfileComplete(store.profile)) return <PageSkeleton variant="dashboard" />;
 
   const currentSeller = store.currentSellerName;
   const myProducts = store.products.filter((product) => product.seller === currentSeller);
@@ -133,10 +134,15 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
         image: values.image || '',
         description: values.description || ''
       });
-      await store.addActivity('product', `${currentSeller} published ${values.name}.`);
-      store.showToast('Product is now available to brokers.', 'success');
       setModalOpen(false);
       setEditing(null);
+      store.showToast('Product is now available to brokers.', 'success');
+
+      try {
+        await store.addActivity('product', `${currentSeller} published ${values.name}.`);
+      } catch {
+        // The product is already saved; activity logging is secondary.
+      }
     } catch (error) {
       store.showToast(error instanceof Error ? error.message : 'Could not save product.', 'error');
     }

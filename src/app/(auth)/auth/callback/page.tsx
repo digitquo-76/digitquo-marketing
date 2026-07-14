@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { PageSkeleton } from '../../../../components/ui/PageSkeleton';
 import { ensureUserProfile } from '../../../../lib/profile';
 import { supabase } from '../../../../lib/supabase';
 import { routeForProfile } from '../../../../lib/utils';
@@ -94,7 +95,7 @@ function AuthCallback() {
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense fallback={<main className="auth-main"><div className="auth-loading">Finishing sign in...</div></main>}>
+    <Suspense fallback={<PageSkeleton variant="auth" />}>
       <AuthCallback />
     </Suspense>
   );

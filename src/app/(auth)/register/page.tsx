@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRightIcon, HomeIcon, UsersIcon } from '../../../components/ui/icons';
+import { PageSkeleton } from '../../../components/ui/PageSkeleton';
 import { getAuthCallbackUrl, routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
 import { ensureUserProfile } from '../../../lib/profile';
@@ -272,7 +273,7 @@ function hasPayoutDetails(values: { payoutAccountName: string; payoutBankName: s
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="auth-loading">Loading...</div>}>
+    <Suspense fallback={<PageSkeleton variant="auth" />}>
       <RegisterForm />
     </Suspense>
   );

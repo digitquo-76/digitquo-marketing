@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { isProfileComplete, routeForProfile, routeForRole } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
+import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
 import { BackIcon, ChartIcon, GridIcon, PackageIcon, SaleIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
@@ -81,7 +82,7 @@ export function ProfileDashboardPage() {
   }, [store.profile, store.user]);
 
   if (store.loading || !store.user || !store.profile?.role || !isProfileComplete(store.profile)) {
-    return <div style={{ padding: '40px' }}>Loading profile...</div>;
+    return <PageSkeleton variant="dashboard" />;
   }
 
   const role = store.profile.role;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, HomeIcon, UsersIcon } from '../../../components/ui/icons';
+import { PageSkeleton } from '../../../components/ui/PageSkeleton';
 import { routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
 import { ensureUserProfile } from '../../../lib/profile';
@@ -147,7 +148,7 @@ export default function OnboardingPage() {
     router.replace(routeForProfile(data));
   };
 
-  if (loading) return <main className="auth-main"><div className="auth-loading">Loading profile...</div></main>;
+  if (loading) return <PageSkeleton variant="auth" />;
 
   return (
     <main className="auth-main">

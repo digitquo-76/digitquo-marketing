@@ -12,6 +12,7 @@ import { DashboardShell } from './DashboardShell';
 import { AnalyticsBarChart, AnalyticsRanking } from './Analytics';
 import { EmptyRow, Metric, ProductImage, ProductImageCarousel } from './Shared';
 import { OrderModal } from './Modals';
+import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
 import { ChartIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
@@ -71,7 +72,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
     }
   }, [router, store.loading, store.profile, store.user]);
 
-  if (store.loading || !store.user || store.profile?.role !== 'broker' || !isProfileComplete(store.profile)) return <div style={{ padding: '40px' }}>Loading workspace...</div>;
+  if (store.loading || !store.user || store.profile?.role !== 'broker' || !isProfileComplete(store.profile)) return <PageSkeleton variant="dashboard" />;
 
   const currentBroker = store.currentBrokerName;
 

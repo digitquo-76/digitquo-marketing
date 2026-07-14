@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogoIcon, MenuIcon } from '../ui/icons';
+import { PageSkeleton } from '../ui/PageSkeleton';
 
 interface DashboardShellProps {
   label: string;
@@ -44,7 +45,7 @@ export function DashboardShell({ label, nav, user, title, actions, children }: D
   }, []);
 
   if (!mounted) {
-    return null; // Prevent hydration mismatch on client-rendered Dashboard
+    return <PageSkeleton variant="dashboard" />;
   }
 
   return (

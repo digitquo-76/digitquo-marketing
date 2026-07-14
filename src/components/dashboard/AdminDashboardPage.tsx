@@ -7,6 +7,7 @@ import { useDigitQuoStore } from '../../lib/store';
 import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { ActivityList, EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
+import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
 import { ActivityIcon, BackIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, ShieldIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
@@ -35,7 +36,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
     }
   }, [router, store.loading, store.profile, store.user]);
 
-  if (store.loading || !store.user || store.profile?.role !== 'admin' || !isProfileComplete(store.profile)) return <div style={{ padding: '40px' }}>Loading workspace...</div>;
+  if (store.loading || !store.user || store.profile?.role !== 'admin' || !isProfileComplete(store.profile)) return <PageSkeleton variant="dashboard" />;
 
   const sellers = new Set(store.products.map((product) => product.seller));
   const productCategories = Array.from(new Set(store.products.map((product) => product.category))).sort();

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { formatCurrency, getProductImages, serializeProductImages } from '../../lib/utils';
 
 export const PRODUCT_CATEGORIES = [
-  'Apparel',
+  'Clothing',
   'Accessories',
   'Footwear',
   'Beauty & Personal Care',

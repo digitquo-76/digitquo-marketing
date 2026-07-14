@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, ShieldIcon } from '../../../components/ui/icons';
+import { PageSkeleton } from '../../../components/ui/PageSkeleton';
 import { ensureUserProfile } from '../../../lib/profile';
 import { supabase } from '../../../lib/supabase';
 import { routeForProfile } from '../../../lib/utils';
@@ -69,7 +70,7 @@ export default function ResetPasswordPage() {
     }
   };
 
-  if (checkingSession) return <main className="auth-main"><div className="auth-loading">Checking reset link...</div></main>;
+  if (checkingSession) return <PageSkeleton variant="auth" />;
 
   return (
     <main className="auth-main">
