@@ -235,7 +235,7 @@ begin
   end if;
 
   v_broker := public.current_profile_name();
-  v_total := v_product.mrp * p_quantity;
+  v_total := (v_product.mrp * p_quantity) + 50;
   v_points := greatest(0, v_product.commission * p_quantity);
 
   update public.products
@@ -359,7 +359,7 @@ begin
     raise exception 'Only % units are available.', v_product.stock;
   end if;
 
-  v_total := v_product.mrp * p_quantity;
+  v_total := (v_product.mrp * p_quantity) + 50;
   v_points := greatest(0, v_product.commission * p_quantity);
 
   begin

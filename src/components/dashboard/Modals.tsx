@@ -30,6 +30,7 @@ export const PRODUCT_CATEGORIES = [
 ];
 
 const PRODUCT_IMAGE_MAX_SIZE_MB = 20;
+const ORDER_SHIPPING_CHARGE = 50;
 
 export function ProductModal({ open, product, onClose, onSave, showToast }: any) {
   const initial = useMemo(
@@ -181,6 +182,7 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
+  const [step, setStep] = useState<'details' | 'review'>('details');
   useModal(Boolean(product));
 
   useEffect(() => {
@@ -189,57 +191,101 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
     setCustomerPhone('');
     setCustomerAddress('');
     setOrderNotes('');
+    setStep('details');
   }, [product]);
 
   if (!product) return null;
 
+  const orderQuantity = Number(quantity || 1);
+  const productTotal = Number(product.mrp || 0) * orderQuantity;
+  const payableTotal = productTotal + ORDER_SHIPPING_CHARGE;
+  const orderDetails = {
+    productId: product.id,
+    customer: customer.trim(),
+    customerPhone: customerPhone.trim(),
+    customerAddress: customerAddress.trim(),
+    orderNotes: orderNotes.trim(),
+    quantity: orderQuantity
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (submitting) return;
+    if (step === 'details') {
+      setStep('review');
+      return;
+    }
+    onSave(orderDetails);
+  };
+
   return (
     <div className="modal-backdrop open" aria-hidden="false" onClick={(event) => { if (!submitting && event.target === event.currentTarget) onClose(); }}>
-      <form className="modal" onSubmit={(event) => { event.preventDefault(); if (!submitting) onSave({ productId: product.id, customer: customer.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim(), orderNotes: orderNotes.trim(), quantity: Number(quantity) }); }}>
+      <form className="modal" onSubmit={submit}>
         <header className="modal-header">
-          <h2 className="modal-title">Place order</h2>
+          <h2 className="modal-title">{step === 'details' ? 'Place order' : 'Review order total'}</h2>
           <button className="modal-close" type="button" onClick={onClose} aria-label="Close" disabled={submitting}>x</button>
         </header>
         <div className="modal-body">
-          <div className="form-grid">
-            <label className="form-group full">
-              <span className="form-label">Product</span>
-              <input className="form-control" value={product.name} readOnly />
-            </label>
-            <label className="form-group">
-              <span className="form-label">Seller</span>
-              <input className="form-control" value={product.seller} readOnly />
-            </label>
-            <label className="form-group">
-              <span className="form-label">MRP</span>
-              <input className="form-control" value={formatCurrency(product.mrp)} readOnly />
-            </label>
-            <label className="form-group">
-              <span className="form-label">Quantity *</span>
-              <input className="form-control" value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} type="number" required min="1" max={product.stock} step="1" />
-              <span className="form-help">{product.stock} units available at {formatCurrency(product.mrp)} MRP each. Commission: {formatCurrency(product.commission)} per unit.</span>
-            </label>
-            <label className="form-group full">
-              <span className="form-label">Customer or business name *</span>
-              <input className="form-control" value={customer} onChange={(event) => setCustomer(event.target.value)} required maxLength={120} placeholder="Who is this order for?" />
-            </label>
-            <label className="form-group">
-              <span className="form-label">Customer phone *</span>
-              <input className="form-control" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} required maxLength={40} placeholder="Phone number" />
-            </label>
-            <label className="form-group full">
-              <span className="form-label">Delivery address *</span>
-              <textarea className="form-control" value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} required maxLength={300} placeholder="Customer delivery address" />
-            </label>
-            <label className="form-group full">
-              <span className="form-label">Order notes</span>
-              <textarea className="form-control" value={orderNotes} onChange={(event) => setOrderNotes(event.target.value)} maxLength={300} placeholder="Size, color, timing, or other seller instructions" />
-            </label>
-          </div>
+          {step === 'details' ? (
+            <div className="form-grid">
+              <label className="form-group full">
+                <span className="form-label">Product</span>
+                <input className="form-control" value={product.name} readOnly />
+              </label>
+              <label className="form-group">
+                <span className="form-label">Seller</span>
+                <input className="form-control" value={product.seller} readOnly />
+              </label>
+              <label className="form-group">
+                <span className="form-label">MRP</span>
+                <input className="form-control" value={formatCurrency(product.mrp)} readOnly />
+              </label>
+              <label className="form-group">
+                <span className="form-label">Quantity *</span>
+                <input className="form-control" value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} type="number" required min="1" max={product.stock} step="1" />
+                <span className="form-help">{product.stock} units available at {formatCurrency(product.mrp)} MRP each. Commission: {formatCurrency(product.commission)} per unit.</span>
+              </label>
+              <label className="form-group full">
+                <span className="form-label">Customer or business name *</span>
+                <input className="form-control" value={customer} onChange={(event) => setCustomer(event.target.value)} required maxLength={120} placeholder="Who is this order for?" />
+              </label>
+              <label className="form-group">
+                <span className="form-label">Customer phone *</span>
+                <input className="form-control" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} required maxLength={40} placeholder="Phone number" />
+              </label>
+              <label className="form-group full">
+                <span className="form-label">Delivery address *</span>
+                <textarea className="form-control" value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} required maxLength={300} placeholder="Customer delivery address" />
+              </label>
+              <label className="form-group full">
+                <span className="form-label">Order notes</span>
+                <textarea className="form-control" value={orderNotes} onChange={(event) => setOrderNotes(event.target.value)} maxLength={300} placeholder="Size, color, timing, or other seller instructions" />
+              </label>
+            </div>
+          ) : (
+            <div className="order-review">
+              <div className="order-review-product">
+                <span className="form-label">Product</span>
+                <strong>{product.name}</strong>
+                <p>{orderQuantity} x {formatCurrency(product.mrp)} from {product.seller}</p>
+              </div>
+              <div className="order-review-lines" aria-label="Order total breakdown">
+                <div><span>Product total</span><strong>{formatCurrency(productTotal)}</strong></div>
+                <div><span>Shipping charge</span><strong>{formatCurrency(ORDER_SHIPPING_CHARGE)}</strong></div>
+                <div className="order-review-total"><span>Total payable</span><strong>{formatCurrency(payableTotal)}</strong></div>
+              </div>
+              <div className="order-review-delivery">
+                <span className="form-label">Delivery details</span>
+                <p><strong>{customer}</strong> · {customerPhone}</p>
+                <p>{customerAddress}</p>
+                {orderNotes ? <p>Notes: {orderNotes}</p> : null}
+              </div>
+            </div>
+          )}
         </div>
         <footer className="modal-footer">
-          <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onClose} disabled={submitting}>Cancel</button>
-          <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={submitting}>{submitting ? 'Processing payment...' : `Pay ${formatCurrency(product.mrp * Number(quantity || 1))}`}</button>
+          {step === 'review' ? <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={() => setStep('details')} disabled={submitting}>Back</button> : <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onClose} disabled={submitting}>Cancel</button>}
+          <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={submitting}>{submitting ? 'Processing payment...' : step === 'details' ? 'Next' : `Pay ${formatCurrency(payableTotal)}`}</button>
         </footer>
       </form>
     </div>

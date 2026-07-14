@@ -555,49 +555,52 @@ function SellerProductDetailForm({
     }
   };
 
-  return (
-    <form className="seller-product-edit-form" onSubmit={submit}>
-      <div className="seller-product-edit-summary">
-        <div className="seller-product-edit-status">
-          <p className="catalog-seller">{product.category}</p>
-          <StockBadge stock={product.stock} />
-        </div>
-        <h1 className="page-title product-detail-title">{product.name}</h1>
-        <div className="seller-product-edit-meta">
-          <span>ID {product.id.slice(-8).toUpperCase()}</span>
-          <span>Listed {formatDate(product.createdAt)}</span>
-        </div>
-      </div>
+  const previewStock = Number(values.stock);
+  const productInStock = Number.isFinite(previewStock) && previewStock > 0;
 
-      <div className="form-grid seller-product-edit-grid">
-        <label className="form-group full">
-          <span className="form-label">Product name *</span>
-          <input className="form-control" value={values.name} onChange={(event) => update('name', event.target.value)} required maxLength={80} />
-        </label>
-        <label className="form-group">
+  return (
+    <form className="seller-product-edit-form seller-product-detail-editor" onSubmit={submit}>
+      <div className="product-detail-eyebrow seller-product-detail-editor-eyebrow">
+        <label className="seller-product-category-select">
           <span className="form-label">Category *</span>
           <select className="form-control" value={values.category} onChange={(event) => update('category', event.target.value)} required>
             <option value="">Choose category</option>
             {PRODUCT_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
           </select>
         </label>
-        <label className="form-group">
-          <span className="form-label">Available stock *</span>
-          <input className="form-control" value={values.stock} onChange={(event) => update('stock', event.target.value)} type="number" required min="0" step="1" />
+        <span>Product ID {product.id.slice(-8).toUpperCase()}</span>
+      </div>
+
+      <label className="seller-product-title-editor">
+        <span className="form-label">Product name *</span>
+        <input className="seller-product-title-input" value={values.name} onChange={(event) => update('name', event.target.value)} required maxLength={80} />
+      </label>
+      <p className="product-detail-seller">Listed by <strong>{product.seller}</strong> on {formatDate(product.createdAt)}</p>
+
+      <div className="product-detail-price-panel seller-product-price-editor">
+        <label className="seller-product-money-field">
+          <span>MRP (Rs)</span>
+          <input value={values.mrp} onChange={(event) => update('mrp', event.target.value)} type="number" required min="1" step="1" aria-label="MRP in rupees" />
         </label>
-        <label className="form-group">
-          <span className="form-label">MRP (Rs) *</span>
-          <input className="form-control" value={values.mrp} onChange={(event) => update('mrp', event.target.value)} type="number" required min="1" step="1" />
-        </label>
-        <label className="form-group">
-          <span className="form-label">Broker commission (Rs) *</span>
-          <input className="form-control" value={values.commission} onChange={(event) => update('commission', event.target.value)} type="number" required min="0" step="1" />
-        </label>
-        <label className="form-group full">
-          <span className="form-label">Description</span>
-          <textarea className="form-control" value={values.description} onChange={(event) => update('description', event.target.value)} maxLength={300} placeholder="Add useful product details for brokers" />
+        <label className="seller-product-money-field commission">
+          <span>Broker commission (Rs)</span>
+          <input value={values.commission} onChange={(event) => update('commission', event.target.value)} type="number" required min="0" step="1" aria-label="Broker commission in rupees" />
         </label>
       </div>
+
+      <div className={`product-detail-stock ${productInStock ? 'available' : 'unavailable'} seller-product-stock-editor`}>
+        <span className="product-detail-stock-dot" />
+        <label>
+          <span>{productInStock ? 'In stock' : 'Out of stock'}</span>
+          <input value={values.stock} onChange={(event) => update('stock', event.target.value)} type="number" required min="0" step="1" aria-label="Available stock" />
+          <p>{previewStock || 0} units available for broker orders</p>
+        </label>
+      </div>
+
+      <label className="product-detail-description-block seller-product-description-editor">
+        <span>Description</span>
+        <textarea value={values.description} onChange={(event) => update('description', event.target.value)} maxLength={300} placeholder="Add useful product details for brokers" />
+      </label>
 
       <div className="seller-product-edit-actions">
         <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onManagePhotos}><EditIcon /> Edit photos</button>

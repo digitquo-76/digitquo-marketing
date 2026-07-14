@@ -17,6 +17,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
 const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || '';
+const SHIPPING_CHARGE = 50;
 
 export async function POST(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -76,7 +77,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Only ${product.stock} units are available.` }, { status: 400 });
   }
 
-  const amount = Math.round(Number(product.mrp) * quantity * 100);
+  const productTotal = Number(product.mrp) * quantity;
+  const orderTotal = productTotal + SHIPPING_CHARGE;
+  const amount = Math.round(orderTotal * 100);
   const receipt = `dq_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
   const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
     method: 'POST',
@@ -91,7 +94,10 @@ export async function POST(request: NextRequest) {
       notes: {
         product_id: product.id,
         product_name: product.name,
-        quantity: String(quantity)
+        quantity: String(quantity),
+        product_total: String(productTotal),
+        shipping_charge: String(SHIPPING_CHARGE),
+        total: String(orderTotal)
       }
     })
   });
@@ -106,6 +112,9 @@ export async function POST(request: NextRequest) {
     orderId: data.id,
     amount: data.amount,
     currency: data.currency,
-    productName: product.name
+    productName: product.name,
+    productTotal,
+    shippingCharge: SHIPPING_CHARGE,
+    total: orderTotal
   });
 }

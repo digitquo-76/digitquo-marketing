@@ -37,6 +37,7 @@ const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
 const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || '';
 const resendApiKey = process.env.RESEND_API_KEY || '';
 const resendFromEmail = process.env.RESEND_FROM_EMAIL || '';
+const SHIPPING_CHARGE = 50;
 
 export async function POST(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
@@ -157,7 +158,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Product was not found.' }, { status: 404 });
   }
 
-  const expectedAmount = Math.round(Number(product.mrp) * quantity * 100);
+  const productTotal = Number(product.mrp) * quantity;
+  const orderTotal = productTotal + SHIPPING_CHARGE;
+  const expectedAmount = Math.round(orderTotal * 100);
   if (Number(razorpayOrder.amount || 0) !== expectedAmount) {
     return NextResponse.json({ error: 'Payment amount does not match the current order total.' }, { status: 400 });
   }
@@ -180,14 +183,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: saleError?.message || 'Payment succeeded, but the order could not be saved.' }, { status: 500 });
   }
 
-  if (sale.id === newOrderId) {
+  let savedSale = sale;
+  if (Number(savedSale.total || 0) !== orderTotal) {
+    const { data: updatedSale, error: updateSaleError } = await serviceClient
+      .from('sales')
+      .update({ total: orderTotal })
+      .eq('id', savedSale.id)
+      .select('*')
+      .single<SaleRow>();
+
+    if (updateSaleError || !updatedSale) {
+      return NextResponse.json({ error: updateSaleError?.message || 'Payment succeeded, but the payable total could not be saved.' }, { status: 500 });
+    }
+    savedSale = updatedSale;
+  }
+
+  if (savedSale.id === newOrderId) {
     await Promise.all([
-      sendSellerOrderEmail(serviceClient, sale),
-      sendBrokerInvoiceEmail(serviceClient, sale, razorpayPaymentId, razorpayOrderId)
+      sendSellerOrderEmail(serviceClient, savedSale),
+      sendBrokerInvoiceEmail(serviceClient, savedSale, razorpayPaymentId, razorpayOrderId)
     ]);
   }
 
-  return NextResponse.json({ sale });
+  return NextResponse.json({ sale: savedSale });
 }
 
 async function fetchRazorpayResource(path: string) {
@@ -286,6 +304,7 @@ async function sendEmail(message: { to: string; subject: string; html: string; t
 }
 
 function buildOrderEmailHtml(order: SaleRow, sellerName: string) {
+  const totals = getOrderTotals(order);
   const rows = [
     ['Product', order.product_name],
     ['Quantity', String(order.quantity)],
@@ -294,6 +313,8 @@ function buildOrderEmailHtml(order: SaleRow, sellerName: string) {
     ['Customer phone', order.customer_phone],
     ['Delivery address', order.customer_address],
     ['Order notes', order.order_notes || 'None'],
+    ['Product total', formatRupees(totals.productTotal)],
+    ['Shipping charge', formatRupees(totals.shippingCharge)],
     ['Total', formatRupees(order.total)]
   ];
 
@@ -307,6 +328,7 @@ function buildOrderEmailHtml(order: SaleRow, sellerName: string) {
 }
 
 function buildOrderEmailText(order: SaleRow, sellerName: string) {
+  const totals = getOrderTotals(order);
   return [
     `Hi ${sellerName},`,
     '',
@@ -319,11 +341,14 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
     `Customer phone: ${order.customer_phone}`,
     `Delivery address: ${order.customer_address}`,
     `Order notes: ${order.order_notes || 'None'}`,
+    `Product total: ${formatRupees(totals.productTotal)}`,
+    `Shipping charge: ${formatRupees(totals.shippingCharge)}`,
     `Total: ${formatRupees(order.total)}`
   ].join('\n');
 }
 
 function buildBrokerInvoiceHtml(order: SaleRow, brokerName: string, paymentId: string, razorpayOrderId: string) {
+  const totals = getOrderTotals(order);
   const rows = [
     ['Invoice/order ID', order.id],
     ['Payment status', 'Paid'],
@@ -336,6 +361,8 @@ function buildBrokerInvoiceHtml(order: SaleRow, brokerName: string, paymentId: s
     ['Delivery address', order.customer_address],
     ['Quantity', String(order.quantity)],
     ['Unit price', formatRupees(order.unit_price)],
+    ['Product total', formatRupees(totals.productTotal)],
+    ['Shipping charge', formatRupees(totals.shippingCharge)],
     ['Amount paid', formatRupees(order.total)],
     ['Commission earned', formatRupees(order.points)]
   ];
@@ -350,6 +377,7 @@ function buildBrokerInvoiceHtml(order: SaleRow, brokerName: string, paymentId: s
 }
 
 function buildBrokerInvoiceText(order: SaleRow, brokerName: string, paymentId: string, razorpayOrderId: string) {
+  const totals = getOrderTotals(order);
   return [
     `Hi ${brokerName},`,
     '',
@@ -366,12 +394,15 @@ function buildBrokerInvoiceText(order: SaleRow, brokerName: string, paymentId: s
     `Delivery address: ${order.customer_address}`,
     `Quantity: ${order.quantity}`,
     `Unit price: ${formatRupees(order.unit_price)}`,
+    `Product total: ${formatRupees(totals.productTotal)}`,
+    `Shipping charge: ${formatRupees(totals.shippingCharge)}`,
     `Amount paid: ${formatRupees(order.total)}`,
     `Commission earned: ${formatRupees(order.points)}`
   ].join('\n');
 }
 
 function buildBrokerInvoicePdf(order: SaleRow, brokerName: string, paymentId: string, razorpayOrderId: string) {
+  const totals = getOrderTotals(order);
   const rows = [
     ['Invoice/order ID', order.id],
     ['Payment status', 'Paid'],
@@ -383,6 +414,8 @@ function buildBrokerInvoicePdf(order: SaleRow, brokerName: string, paymentId: st
     ['Delivery address', order.customer_address],
     ['Quantity', String(order.quantity)],
     ['Unit price', formatPdfMoney(order.unit_price)],
+    ['Product total', formatPdfMoney(totals.productTotal)],
+    ['Shipping charge', formatPdfMoney(totals.shippingCharge)],
     ['Amount paid', formatPdfMoney(order.total)],
     ['Commission earned', formatPdfMoney(order.points)],
     ['Razorpay payment ID', paymentId],
@@ -412,6 +445,14 @@ function buildBrokerInvoicePdf(order: SaleRow, brokerName: string, paymentId: st
   drawText(48, 72, 9, 'Generated by DigitQuo Store. Keep this invoice for your records.');
 
   return createSinglePagePdf(streamLines.join('\n'));
+}
+
+function getOrderTotals(order: SaleRow) {
+  const productTotal = Number(order.unit_price || 0) * Number(order.quantity || 0);
+  return {
+    productTotal,
+    shippingCharge: Math.max(0, Number(order.total || 0) - productTotal)
+  };
 }
 
 function createSinglePagePdf(contentStream: string) {
