@@ -192,19 +192,54 @@ function parseBaapstoreUrl(value: string) {
 }
 
 async function fetchBaapstoreHtml(url: string) {
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'DigitQuoStoreImporter/1.0',
-      Accept: 'text/html,application/xhtml+xml'
-    },
-    cache: 'no-store'
-  });
+  const response = await fetchWithBrowserHeaders(url);
 
   if (!response.ok) {
-    throw new Error(`Baapstore returned ${response.status} for ${url}`);
+    const warmedResponse = response.status === 403 ? await fetchAfterCookieWarmup(url) : null;
+    if (warmedResponse?.ok) return warmedResponse.text();
+
+    const blockedReason = response.status === 403
+      ? ' Baapstore may be blocking this server IP or automated requests for that page.'
+      : '';
+    throw new Error(`Baapstore returned ${response.status} for ${url}.${blockedReason}`);
   }
 
   return response.text();
+}
+
+async function fetchAfterCookieWarmup(url: string) {
+  const target = new URL(url);
+  const homeResponse = await fetchWithBrowserHeaders(target.origin);
+  const cookie = collectCookies(homeResponse);
+
+  return fetchWithBrowserHeaders(url, cookie);
+}
+
+function fetchWithBrowserHeaders(url: string, cookie = '') {
+  const target = new URL(url);
+
+  return fetch(url, {
+    redirect: 'follow',
+    cache: 'no-store',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'en-IN,en;q=0.9,hi;q=0.8',
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+      Referer: target.origin,
+      ...(cookie ? { Cookie: cookie } : {})
+    }
+  });
+}
+
+function collectCookies(response: Response) {
+  const setCookie = response.headers.get('set-cookie') || '';
+  return setCookie
+    .split(/,(?=[^;,]+=)/)
+    .map((item) => item.split(';')[0]?.trim())
+    .filter(Boolean)
+    .join('; ');
 }
 
 function parseProductsFromHtml(html: string, pageUrl: URL): ParsedProduct[] {
