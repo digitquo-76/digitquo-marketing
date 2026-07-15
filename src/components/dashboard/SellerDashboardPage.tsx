@@ -24,6 +24,8 @@ type ProductSaveValues = {
   stock: number;
   image?: string;
   description: string;
+  optionLabel?: string;
+  optionValues?: string[];
 };
 
 export function SellerDashboardPage({ section, productId }: { section: SellerSection; productId?: string }) {
@@ -102,7 +104,9 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
         commission: Number(values.commission),
         stock: Number(values.stock),
         image: values.image ?? product.image,
-        description: values.description || ''
+        description: values.description || '',
+        optionLabel: values.optionLabel || '',
+        optionValues: values.optionValues || []
       });
       await store.addActivity('product', `${currentSeller} updated ${values.name}.`);
       store.showToast('Product updated successfully.', 'success');
@@ -132,7 +136,9 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
         stock: Number(values.stock),
         seller: currentSeller,
         image: values.image || '',
-        description: values.description || ''
+        description: values.description || '',
+        optionLabel: values.optionLabel || '',
+        optionValues: values.optionValues || []
       });
       setModalOpen(false);
       setEditing(null);

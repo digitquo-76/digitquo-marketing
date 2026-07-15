@@ -12,6 +12,8 @@ type SaleRow = {
   customer_phone: string;
   customer_address: string;
   order_notes: string;
+  selected_option_label: string;
+  selected_option_value: string;
   quantity: number;
   unit_price: number;
   total: number;
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
   const customerPhone = cleanString(order.customerPhone);
   const customerAddress = cleanString(order.customerAddress);
   const orderNotes = cleanString(order.orderNotes);
+  const selectedOptionLabel = cleanString(order.selectedOptionLabel);
+  const selectedOptionValue = cleanString(order.selectedOptionValue);
 
   if (!productId || !Number.isInteger(quantity) || quantity < 1) {
     return NextResponse.json({ error: 'Product and valid quantity are required.' }, { status: 400 });
@@ -150,12 +154,16 @@ export async function POST(request: NextRequest) {
 
   const { data: product, error: productError } = await userClient
     .from('products')
-    .select('mrp, stock')
+    .select('mrp, stock, option_label, option_values')
     .eq('id', productId)
-    .single<{ mrp: number; stock: number }>();
+    .single<{ mrp: number; stock: number; option_label: string; option_values: string[] }>();
 
   if (productError || !product) {
     return NextResponse.json({ error: 'Product was not found.' }, { status: 404 });
+  }
+  const allowedOptions = Array.isArray(product.option_values) ? product.option_values : [];
+  if (allowedOptions.length && (!selectedOptionValue || !allowedOptions.includes(selectedOptionValue))) {
+    return NextResponse.json({ error: `Select a valid ${product.option_label || 'product option'}.` }, { status: 400 });
   }
 
   const productTotal = Number(product.mrp) * quantity;
@@ -173,6 +181,8 @@ export async function POST(request: NextRequest) {
     p_customer_phone: customerPhone,
     p_customer_address: customerAddress,
     p_order_notes: orderNotes,
+    p_selected_option_label: allowedOptions.length ? product.option_label : '',
+    p_selected_option_value: allowedOptions.length ? selectedOptionValue : '',
     p_quantity: quantity,
     p_broker: brokerName,
     p_razorpay_order_id: razorpayOrderId,
@@ -308,6 +318,7 @@ function buildOrderEmailHtml(order: SaleRow, sellerName: string) {
   const rows = [
     ['Product', order.product_name],
     ['Quantity', String(order.quantity)],
+    ...(order.selected_option_value ? [[order.selected_option_label || 'Option', order.selected_option_value]] : []),
     ['Broker', order.broker],
     ['Customer', order.customer],
     ['Customer phone', order.customer_phone],
@@ -336,6 +347,7 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
     '',
     `Product: ${order.product_name}`,
     `Quantity: ${order.quantity}`,
+    ...(order.selected_option_value ? [`${order.selected_option_label || 'Option'}: ${order.selected_option_value}`] : []),
     `Broker: ${order.broker}`,
     `Customer: ${order.customer}`,
     `Customer phone: ${order.customer_phone}`,
@@ -360,6 +372,7 @@ function buildBrokerInvoiceHtml(order: SaleRow, brokerName: string, paymentId: s
     ['Customer phone', order.customer_phone],
     ['Delivery address', order.customer_address],
     ['Quantity', String(order.quantity)],
+    ...(order.selected_option_value ? [[order.selected_option_label || 'Option', order.selected_option_value]] : []),
     ['Unit price', formatRupees(order.unit_price)],
     ['Product total', formatRupees(totals.productTotal)],
     ['Shipping charge', formatRupees(totals.shippingCharge)],
@@ -393,6 +406,7 @@ function buildBrokerInvoiceText(order: SaleRow, brokerName: string, paymentId: s
     `Customer phone: ${order.customer_phone}`,
     `Delivery address: ${order.customer_address}`,
     `Quantity: ${order.quantity}`,
+    ...(order.selected_option_value ? [`${order.selected_option_label || 'Option'}: ${order.selected_option_value}`] : []),
     `Unit price: ${formatRupees(order.unit_price)}`,
     `Product total: ${formatRupees(totals.productTotal)}`,
     `Shipping charge: ${formatRupees(totals.shippingCharge)}`,
@@ -413,6 +427,7 @@ function buildBrokerInvoicePdf(order: SaleRow, brokerName: string, paymentId: st
     ['Customer phone', order.customer_phone],
     ['Delivery address', order.customer_address],
     ['Quantity', String(order.quantity)],
+    ...(order.selected_option_value ? [[order.selected_option_label || 'Option', order.selected_option_value]] : []),
     ['Unit price', formatPdfMoney(order.unit_price)],
     ['Product total', formatPdfMoney(totals.productTotal)],
     ['Shipping charge', formatPdfMoney(totals.shippingCharge)],

@@ -110,9 +110,9 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
     relatedProducts.push(...available.filter(p => p.id !== activeProduct.id && !relatedProducts.includes(p)).slice(0, 5 - relatedProducts.length));
   }
 
-  const placeOrder = async ({ productId, customer, customerPhone, customerAddress, orderNotes, quantity }: any) => {
+  const placeOrder = async ({ productId, customer, customerPhone, customerAddress, orderNotes, selectedOptionLabel, selectedOptionValue, quantity }: any) => {
     const product = store.products.find((p) => p.id === productId);
-    if (!product || !customer || !customerPhone || !customerAddress || quantity < 1 || quantity > product.stock) {
+    if (!product || !customer || !customerPhone || !customerAddress || quantity < 1 || quantity > product.stock || (product.optionValues.length > 0 && !selectedOptionValue)) {
       store.showToast('Enter customer details and a valid quantity.', 'error');
       return;
     }
@@ -125,6 +125,8 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
         customerPhone,
         customerAddress,
         orderNotes,
+        selectedOptionLabel,
+        selectedOptionValue,
         quantity: Number(quantity)
       };
       const checkoutOrder = await createRazorpayOrder(product.id, Number(quantity));

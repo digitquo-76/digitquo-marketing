@@ -12,6 +12,8 @@ type ProductRow = {
   seller: string;
   image: string;
   description: string;
+  option_label: string;
+  option_values: string[];
 };
 
 type ParsedProduct = {
@@ -23,6 +25,8 @@ type ParsedProduct = {
   description: string;
   baapstorePrice: number;
   avgRetailPrice: number | null;
+  optionLabel: string;
+  optionValues: string[];
 };
 
 const TARGET_SELLER_EMAIL = 'ebrahimsekh06s@gmail.com';
@@ -371,7 +375,9 @@ function parseProductCard(card: string, category: string, pageUrl: URL): ParsedP
     images: image ? [image] : [],
     description,
     baapstorePrice,
-    avgRetailPrice
+    avgRetailPrice,
+    optionLabel: '',
+    optionValues: []
   };
 }
 
@@ -388,7 +394,9 @@ function toProductRow(product: ParsedProduct, seller: string, stock: number): Pr
     stock,
     seller,
     image: serializeProductImages(product.images),
-    description: product.description
+    description: product.description,
+    option_label: product.optionLabel,
+    option_values: product.optionValues
   };
 }
 
@@ -407,9 +415,12 @@ async function enrichProductsWithDetailImages(products: ParsedProduct[]) {
       try {
         const html = await fetchBaapstoreHtml(product.sourceUrl);
         const detailImages = parseDetailImages(html, product.sourceId);
+        const productOption = parseProductOption(html);
         if (detailImages.length) {
           product.images = mergeProductImages([...detailImages, ...product.images]);
         }
+        product.optionLabel = productOption.label;
+        product.optionValues = productOption.values;
       } catch {
         product.images = mergeProductImages(product.images);
       }
@@ -418,6 +429,19 @@ async function enrichProductsWithDetailImages(products: ParsedProduct[]) {
 
   await Promise.all(Array.from({ length: Math.min(DETAIL_IMAGE_CONCURRENCY, enriched.length) }, () => worker()));
   return enriched;
+}
+
+function parseProductOption(html: string) {
+  const selects = Array.from(html.matchAll(/<label[^>]*>([\s\S]*?)<\/label>[\s\S]{0,300}?<select[^>]*>([\s\S]*?)<\/select>/gi));
+  for (const match of selects) {
+    const label = limitText(cleanProductText(decodeHtml(stripTags(match[1] || ''))).replace(/\s*\*\s*$/, ''), 60);
+    const values = Array.from((match[2] || '').matchAll(/<option[^>]*value=["']([^"']*)["'][^>]*>([\s\S]*?)<\/option>/gi))
+      .filter((option) => cleanString(option[1]))
+      .map((option) => limitText(cleanProductText(decodeHtml(stripTags(option[2] || ''))), 100))
+      .filter(Boolean);
+    if (label && values.length) return { label, values: Array.from(new Set(values)) };
+  }
+  return { label: '', values: [] as string[] };
 }
 
 function parseDetailImages(html: string, sourceId: string) {

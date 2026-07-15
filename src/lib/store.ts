@@ -29,6 +29,8 @@ type PlaceOrderInput = {
   customerPhone: string;
   customerAddress: string;
   orderNotes: string;
+  selectedOptionLabel: string;
+  selectedOptionValue: string;
   quantity: number;
 };
 
@@ -184,6 +186,8 @@ export function useDigitQuoStore() {
       p_customer_phone: order.customerPhone,
       p_customer_address: order.customerAddress,
       p_order_notes: order.orderNotes,
+      p_selected_option_label: order.selectedOptionLabel,
+      p_selected_option_value: order.selectedOptionValue,
       p_quantity: order.quantity
     });
 
@@ -329,6 +333,8 @@ function mapProductToDB(p: Product) {
     seller: p.seller,
     image: p.image,
     description: p.description,
+    option_label: p.optionLabel || '',
+    option_values: p.optionValues || [],
     created_at: p.createdAt
   };
 }
@@ -347,6 +353,8 @@ function mapProductFromDB(p: any): Product {
     seller: p.seller,
     image: p.image,
     description: p.description,
+    optionLabel: p.option_label || '',
+    optionValues: Array.isArray(p.option_values) ? p.option_values : [],
     createdAt: p.created_at
   };
 }
@@ -361,6 +369,8 @@ function mapSaleToDB(s: Sale) {
     customer_phone: s.customerPhone,
     customer_address: s.customerAddress,
     order_notes: s.orderNotes,
+    selected_option_label: s.selectedOptionLabel || '',
+    selected_option_value: s.selectedOptionValue || '',
     quantity: s.quantity,
     unit_price: s.unitPrice,
     total: s.total,
@@ -381,6 +391,8 @@ function mapSaleFromDB(s: any): Sale {
     customerPhone: s.customer_phone || '',
     customerAddress: s.customer_address || '',
     orderNotes: s.order_notes || '',
+    selectedOptionLabel: s.selected_option_label || '',
+    selectedOptionValue: s.selected_option_value || '',
     quantity: s.quantity,
     unitPrice: s.unit_price,
     total: s.total,

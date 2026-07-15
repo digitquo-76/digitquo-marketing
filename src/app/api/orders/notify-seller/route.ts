@@ -11,6 +11,8 @@ type SaleRow = {
   customer_phone: string;
   customer_address: string;
   order_notes: string;
+  selected_option_label: string;
+  selected_option_value: string;
   quantity: number;
   unit_price: number;
   total: number;
@@ -132,6 +134,7 @@ function buildOrderEmailHtml(order: SaleRow, sellerName: string) {
   const rows = [
     ['Product', order.product_name],
     ['Quantity', String(order.quantity)],
+    ...(order.selected_option_value ? [[order.selected_option_label || 'Option', order.selected_option_value]] : []),
     ['Broker', order.broker],
     ['Customer', order.customer],
     ['Customer phone', order.customer_phone],
@@ -164,6 +167,7 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
     '',
     `Product: ${order.product_name}`,
     `Quantity: ${order.quantity}`,
+    ...(order.selected_option_value ? [`${order.selected_option_label || 'Option'}: ${order.selected_option_value}`] : []),
     `Broker: ${order.broker}`,
     `Customer: ${order.customer}`,
     `Customer phone: ${order.customer_phone}`,

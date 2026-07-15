@@ -8,6 +8,8 @@ export interface Product {
   seller: string;
   image: string;
   description: string;
+  optionLabel: string;
+  optionValues: string[];
   createdAt: string;
 }
 
@@ -20,6 +22,8 @@ export interface Sale {
   customerPhone: string;
   customerAddress: string;
   orderNotes: string;
+  selectedOptionLabel: string;
+  selectedOptionValue: string;
   quantity: number;
   unitPrice: number;
   total: number;

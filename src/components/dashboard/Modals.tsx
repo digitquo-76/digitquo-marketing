@@ -40,7 +40,7 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
           mrp: product.mrp ?? product.price,
           commission: product.commission ?? Math.max(0, Number(product.mrp || 0) - Number(product.price || 0))
         }
-      : { name: '', category: '', mrp: '', commission: '', stock: '', image: '', description: '' },
+      : { name: '', category: '', mrp: '', commission: '', stock: '', image: '', description: '', optionLabel: '', optionValues: [] },
     [product]
   );
   const [values, setValues] = useState(initial);
@@ -89,7 +89,9 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       commission: Number(values.commission),
       stock: Number(values.stock),
       image: serializeProductImages(images),
-      description: String(values.description || '').trim()
+      description: String(values.description || '').trim(),
+      optionLabel: String(values.optionLabel || '').trim(),
+      optionValues: (Array.isArray(values.optionValues) ? values.optionValues : String(values.optionValues || '').split(/[,\n]/)).map((value: string) => value.trim()).filter(Boolean)
     };
     if (!cleaned.name || !cleaned.category || cleaned.mrp <= 0 || cleaned.commission < 0 || cleaned.stock < 0) {
       showToast('Please complete all required product fields.', 'error');
@@ -97,6 +99,10 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
     }
     if (cleaned.commission > cleaned.mrp) {
       showToast('Commission cannot be higher than MRP.', 'error');
+      return;
+    }
+    if ((cleaned.optionLabel && !cleaned.optionValues.length) || (!cleaned.optionLabel && cleaned.optionValues.length)) {
+      showToast('Add both an option name and at least one choice, or leave both blank.', 'error');
       return;
     }
     onSave(cleaned);
@@ -156,6 +162,16 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
               <span className="form-label">Description</span>
               <textarea className="form-control" value={values.description || ''} onChange={(event) => update('description', event.target.value)} maxLength={300} placeholder="Add useful product details for brokers" />
             </label>
+            <label className="form-group">
+              <span className="form-label">Choice name</span>
+              <input className="form-control" value={values.optionLabel || ''} onChange={(event) => update('optionLabel', event.target.value)} maxLength={60} placeholder="Size or Mobile model" />
+              <span className="form-help">Leave blank when this product has no selectable choice.</span>
+            </label>
+            <label className="form-group">
+              <span className="form-label">Available choices</span>
+              <textarea className="form-control" value={Array.isArray(values.optionValues) ? values.optionValues.join(', ') : values.optionValues || ''} onChange={(event) => update('optionValues', event.target.value)} maxLength={500} placeholder="S, M, L, XL" />
+              <span className="form-help">Separate choices with commas or new lines.</span>
+            </label>
           </div>
         </div>
         <footer className="modal-footer">
@@ -182,6 +198,7 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
+  const [selectedOptionValue, setSelectedOptionValue] = useState('');
   const [step, setStep] = useState<'details' | 'review'>('details');
   useModal(Boolean(product));
 
@@ -191,6 +208,7 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
     setCustomerPhone('');
     setCustomerAddress('');
     setOrderNotes('');
+    setSelectedOptionValue('');
     setStep('details');
   }, [product]);
 
@@ -205,6 +223,8 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
     customerPhone: customerPhone.trim(),
     customerAddress: customerAddress.trim(),
     orderNotes: orderNotes.trim(),
+    selectedOptionLabel: product.optionLabel || '',
+    selectedOptionValue,
     quantity: orderQuantity
   };
 
@@ -245,6 +265,15 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
                 <input className="form-control" value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} type="number" required min="1" max={product.stock} step="1" />
                 <span className="form-help">{product.stock} units available at {formatCurrency(product.mrp)} MRP each. Commission: {formatCurrency(product.commission)} per unit.</span>
               </label>
+              {product.optionLabel && product.optionValues?.length ? (
+                <label className="form-group">
+                  <span className="form-label">{product.optionLabel} *</span>
+                  <select className="form-control" value={selectedOptionValue} onChange={(event) => setSelectedOptionValue(event.target.value)} required>
+                    <option value="">Please select</option>
+                    {product.optionValues.map((value: string) => <option value={value} key={value}>{value}</option>)}
+                  </select>
+                </label>
+              ) : null}
               <label className="form-group full">
                 <span className="form-label">Customer or business name *</span>
                 <input className="form-control" value={customer} onChange={(event) => setCustomer(event.target.value)} required maxLength={120} placeholder="Who is this order for?" />
@@ -268,6 +297,7 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
                 <span className="form-label">Product</span>
                 <strong>{product.name}</strong>
                 <p>{orderQuantity} x {formatCurrency(product.mrp)} from {product.seller}</p>
+                {selectedOptionValue ? <p>{product.optionLabel}: {selectedOptionValue}</p> : null}
               </div>
               <div className="order-review-lines" aria-label="Order total breakdown">
                 <div><span>Product total</span><strong>{formatCurrency(productTotal)}</strong></div>

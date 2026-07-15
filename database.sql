@@ -39,11 +39,15 @@ create table if not exists public.products (
   seller text not null,
   image text,
   description text not null default '',
+  option_label text not null default '',
+  option_values text[] not null default '{}',
   created_at timestamptz not null default timezone('utc'::text, now()),
   constraint products_commission_check check (commission >= 0 and commission <= mrp)
 );
 
 alter table public.products add column if not exists commission numeric(12, 2);
+alter table public.products add column if not exists option_label text not null default '';
+alter table public.products add column if not exists option_values text[] not null default '{}';
 update public.products
 set commission = greatest(0, mrp - price)
 where commission is null;
@@ -66,6 +70,8 @@ create table if not exists public.sales (
   customer_phone text not null default '',
   customer_address text not null default '',
   order_notes text not null default '',
+  selected_option_label text not null default '',
+  selected_option_value text not null default '',
   quantity integer not null check (quantity > 0),
   unit_price numeric(12, 2) not null check (unit_price > 0),
   total numeric(12, 2) not null check (total >= 0),
@@ -79,6 +85,8 @@ create table if not exists public.sales (
 alter table public.sales add column if not exists customer_phone text not null default '';
 alter table public.sales add column if not exists customer_address text not null default '';
 alter table public.sales add column if not exists order_notes text not null default '';
+alter table public.sales add column if not exists selected_option_label text not null default '';
+alter table public.sales add column if not exists selected_option_value text not null default '';
 alter table public.sales add column if not exists razorpay_order_id text;
 alter table public.sales add column if not exists razorpay_payment_id text;
 
@@ -175,6 +183,7 @@ as $$
     )
 $$;
 
+drop function if exists public.place_order(text, text, text, text, text, text, integer);
 create or replace function public.place_order(
   p_order_id text,
   p_product_id text,
@@ -182,6 +191,8 @@ create or replace function public.place_order(
   p_customer_phone text,
   p_customer_address text,
   p_order_notes text,
+  p_selected_option_label text,
+  p_selected_option_value text,
   p_quantity integer
 )
 returns public.sales
@@ -233,6 +244,9 @@ begin
   if v_product.stock < p_quantity then
     raise exception 'Only % units are available.', v_product.stock;
   end if;
+  if cardinality(v_product.option_values) > 0 and not (btrim(coalesce(p_selected_option_value, '')) = any(v_product.option_values)) then
+    raise exception 'Select a valid %.', coalesce(nullif(v_product.option_label, ''), 'product option');
+  end if;
 
   v_broker := public.current_profile_name();
   v_total := (v_product.mrp * p_quantity) + 50;
@@ -251,6 +265,8 @@ begin
     customer_phone,
     customer_address,
     order_notes,
+    selected_option_label,
+    selected_option_value,
     quantity,
     unit_price,
     total,
@@ -266,6 +282,8 @@ begin
     btrim(p_customer_phone),
     btrim(p_customer_address),
     btrim(coalesce(p_order_notes, '')),
+    case when cardinality(v_product.option_values) > 0 then v_product.option_label else '' end,
+    case when cardinality(v_product.option_values) > 0 then btrim(p_selected_option_value) else '' end,
     p_quantity,
     v_product.mrp,
     v_total,
@@ -278,8 +296,9 @@ begin
 end;
 $$;
 
-revoke all on function public.place_order(text, text, text, text, text, text, integer) from public, anon, authenticated;
+revoke all on function public.place_order(text, text, text, text, text, text, text, text, integer) from public, anon, authenticated;
 
+drop function if exists public.place_paid_order(text, text, text, text, text, text, integer, text, text, text);
 create or replace function public.place_paid_order(
   p_order_id text,
   p_product_id text,
@@ -287,6 +306,8 @@ create or replace function public.place_paid_order(
   p_customer_phone text,
   p_customer_address text,
   p_order_notes text,
+  p_selected_option_label text,
+  p_selected_option_value text,
   p_quantity integer,
   p_broker text,
   p_razorpay_order_id text,
@@ -358,6 +379,9 @@ begin
   if v_product.stock < p_quantity then
     raise exception 'Only % units are available.', v_product.stock;
   end if;
+  if cardinality(v_product.option_values) > 0 and not (btrim(coalesce(p_selected_option_value, '')) = any(v_product.option_values)) then
+    raise exception 'Select a valid %.', coalesce(nullif(v_product.option_label, ''), 'product option');
+  end if;
 
   v_total := (v_product.mrp * p_quantity) + 50;
   v_points := greatest(0, v_product.commission * p_quantity);
@@ -376,6 +400,8 @@ begin
       customer_phone,
       customer_address,
       order_notes,
+      selected_option_label,
+      selected_option_value,
       quantity,
       unit_price,
       total,
@@ -393,6 +419,8 @@ begin
       btrim(p_customer_phone),
       btrim(p_customer_address),
       btrim(coalesce(p_order_notes, '')),
+      case when cardinality(v_product.option_values) > 0 then v_product.option_label else '' end,
+      case when cardinality(v_product.option_values) > 0 then btrim(p_selected_option_value) else '' end,
       p_quantity,
       v_product.mrp,
       v_total,
@@ -421,8 +449,8 @@ begin
 end;
 $$;
 
-revoke all on function public.place_paid_order(text, text, text, text, text, text, integer, text, text, text) from public, anon, authenticated;
-grant execute on function public.place_paid_order(text, text, text, text, text, text, integer, text, text, text) to service_role;
+revoke all on function public.place_paid_order(text, text, text, text, text, text, text, text, integer, text, text, text) from public, anon, authenticated;
+grant execute on function public.place_paid_order(text, text, text, text, text, text, text, text, integer, text, text, text) to service_role;
 
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
