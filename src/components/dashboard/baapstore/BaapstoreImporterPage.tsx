@@ -43,7 +43,7 @@ const MARKUP_RATE = 0.15;
 const COMMISSION_RATE_ON_MARKUP = 0.8;
 
 export function BaapstoreImporterPage() {
-  const store = useDigitQuoStore();
+  const store = useDigitQuoStore({ loadWorkspace: false });
   const router = useRouter();
   const [sourceUrl, setSourceUrl] = useState('https://www.baapstore.com/products');
   const [mode, setMode] = useState<'single-page' | 'listing-pages'>('listing-pages');

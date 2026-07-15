@@ -44,7 +44,7 @@ function navForRole(role: string): [string, string, ReactNode][] {
 }
 
 export function ProfileDashboardPage() {
-  const store = useDigitQuoStore();
+  const store = useDigitQuoStore({ loadWorkspace: false });
   const router = useRouter();
   const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');

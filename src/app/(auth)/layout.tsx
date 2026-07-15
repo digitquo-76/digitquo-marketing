@@ -1,4 +1,6 @@
 import '../../styles/app.css';
+import '../../styles/landing.css';
+import '../../styles/auth.css';
 import Link from 'next/link';
 import { ArrowRightIcon, LogoMark } from '../../components/ui/icons';
 import { ProductNoticePopup } from '../../components/ui/ProductNoticePopup';

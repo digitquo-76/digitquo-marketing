@@ -45,7 +45,7 @@ type CompletePaidOrderInput = {
   payment: RazorpayPaymentResult;
 };
 
-export function useDigitQuoStore() {
+export function useDigitQuoStore({ loadWorkspace = true }: { loadWorkspace?: boolean } = {}) {
   const router = useRouter();
   const [products, setProductsState] = useState<Product[]>([]);
   const [sales, setSalesState] = useState<Sale[]>([]);
@@ -80,6 +80,11 @@ export function useDigitQuoStore() {
         } catch (error) {
           if (mounted) showToast(error instanceof Error ? error.message : 'Could not prepare your profile.', 'error');
         }
+      }
+
+      if (!loadWorkspace) {
+        if (mounted) setLoading(false);
+        return;
       }
 
       const [productsRes, salesRes, claimsRes, activityRes] = await Promise.all([
@@ -122,7 +127,7 @@ export function useDigitQuoStore() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [loadWorkspace]);
 
   const showToast = (message: string, type: 'success' | 'error' | '' = '') => {
     const toast: Toast = { id: `toast_${Date.now()}_${Math.random()}`, message, type };

@@ -1,8 +1,4 @@
 @import "tailwindcss";
-@import "./landing.css";
-@import "./auth.css";
-@import "./dashboard.css";
-@import "./skeleton.css";
 
 .product-notice-popup {
   position: fixed;
