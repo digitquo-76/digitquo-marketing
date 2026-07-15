@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRightIcon, HomeIcon, UsersIcon } from '../../../components/ui/icons';
@@ -28,6 +28,7 @@ function RegisterForm() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const registrationInFlight = useRef(false);
 
   useEffect(() => {
     const roleParam = searchParams.get('role');
@@ -49,6 +50,8 @@ function RegisterForm() {
 
   const handleRegister = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (registrationInFlight.current) return;
+
     setError('');
     setNotice('');
 
@@ -68,6 +71,7 @@ function RegisterForm() {
     }
 
     setSubmitting(true);
+    registrationInFlight.current = true;
     const displayName = role === 'seller' ? businessName.trim() : name.trim();
 
     const { data, error: authError } = await supabase.auth.signUp({
@@ -92,12 +96,14 @@ function RegisterForm() {
 
     if (authError || !data.user) {
       setSubmitting(false);
-      setError(authError?.message || 'Registration failed.');
+      registrationInFlight.current = false;
+      setError(formatRegistrationError(authError?.message));
       return;
     }
 
     if (!data.session) {
       setSubmitting(false);
+      registrationInFlight.current = false;
       setNotice('Account created. Check your email to confirm your account, then sign in.');
       return;
     }
@@ -107,6 +113,7 @@ function RegisterForm() {
       router.push(routeForProfile(profile));
     } catch (profileError) {
       setSubmitting(false);
+      registrationInFlight.current = false;
       setError(profileError instanceof Error ? profileError.message : 'Could not prepare your account profile.');
     }
   };
@@ -247,8 +254,8 @@ function RegisterForm() {
                 )}
 
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <button type="button" className="btn-dashboard btn-dashboard-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setStep('account')}>Back</button>
-                  <button type="submit" className="btn btn-primary auth-submit" style={{ flex: 1 }}>{submitting ? 'Creating account...' : 'Create account'} <ArrowRightIcon size={16} /></button>
+                  <button type="button" className="btn-dashboard btn-dashboard-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setStep('account')} disabled={submitting}>Back</button>
+                  <button type="submit" className="btn btn-primary auth-submit" style={{ flex: 1 }} disabled={submitting}>{submitting ? 'Creating account...' : 'Create account'} <ArrowRightIcon size={16} /></button>
                 </div>
               </>
             )}
@@ -259,6 +266,16 @@ function RegisterForm() {
       </section>
     </main>
   );
+}
+
+function formatRegistrationError(message?: string) {
+  if (!message) return 'Registration failed.';
+
+  if (message.toLowerCase().includes('security purposes')) {
+    return 'Your account request is already being processed. Please check your email, or try again in a minute.';
+  }
+
+  return message;
 }
 
 function hasPayoutDetails(values: { payoutAccountName: string; payoutBankName: string; payoutAccountNumber: string; payoutIfsc: string; payoutUpi: string }) {

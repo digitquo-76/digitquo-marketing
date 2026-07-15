@@ -72,7 +72,7 @@ export default function LoginPage() {
       setSubmitting(false);
       const message = authError?.message || 'Login failed.';
       const invalidCredentials = message.toLowerCase().includes('invalid login credentials');
-      setError(invalidCredentials ? 'Account not found, or the password is incorrect.' : message);
+      setError(invalidCredentials ? 'We could not sign you in. Check your password, or create an account if you do not have one.' : message);
       setShowCreateAccountPrompt(invalidCredentials);
       return;
     }
