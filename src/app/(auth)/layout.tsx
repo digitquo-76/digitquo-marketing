@@ -1,6 +1,7 @@
 import '../../styles/app.css';
 import Link from 'next/link';
 import { ArrowRightIcon, LogoMark } from '../../components/ui/icons';
+import { ProductNoticePopup } from '../../components/ui/ProductNoticePopup';
 
 export const metadata = {
   title: 'DigitQuo Store - Authentication',
@@ -16,6 +17,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body>
+        <ProductNoticePopup />
         <div className="bg-effects" aria-hidden="true">
           <div className="bg-orb bg-orb-1" />
           <div className="bg-orb bg-orb-2" />
