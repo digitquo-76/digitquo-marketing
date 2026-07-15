@@ -306,6 +306,20 @@ a {
   box-shadow: none;
 }
 
+.button-spinner {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  animation: button-spinner-rotate 0.7s linear infinite;
+}
+
+@keyframes button-spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
 .btn-dashboard-primary {
   color: #ffffff;
   background: linear-gradient(135deg, #7c3aed, #5b21b6);
@@ -1080,6 +1094,62 @@ textarea.form-control {
   gap: 10px;
   border-top: 1px solid var(--dashboard-border);
   background: #fbfafe;
+}
+
+.modal.is-saving .modal-body {
+  pointer-events: none;
+  opacity: 0.72;
+  transition: opacity 0.2s ease;
+}
+
+.seller-product-choice-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+}
+
+.product-detail-choice-summary {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 14px;
+  background: #fbfafe;
+}
+
+.product-detail-choice-summary h3 {
+  font-size: 0.86rem;
+}
+
+.product-detail-choice-summary p {
+  color: var(--dashboard-muted);
+  font-size: 0.78rem;
+}
+
+.product-detail-choice-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.product-detail-choice-list span {
+  padding: 7px 10px;
+  color: var(--dashboard-purple-dark);
+  border: 1px solid #ddd1f4;
+  border-radius: 9px;
+  background: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+@media (max-width: 640px) {
+  .seller-product-choice-editor {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner { animation-duration: 1.4s; }
 }
 
 .order-review {

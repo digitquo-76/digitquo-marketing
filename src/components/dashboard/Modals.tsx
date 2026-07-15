@@ -44,9 +44,11 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
     [product]
   );
   const [values, setValues] = useState(initial);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setValues(initial);
+    setIsSaving(false);
   }, [initial, open]);
 
   useModal(open);
@@ -80,8 +82,9 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       .catch(() => showToast('Could not read one of those images. Try again.', 'error'));
   };
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (isSaving) return;
     const cleaned = {
       name: String(values.name || '').trim(),
       category: String(values.category || '').trim(),
@@ -105,15 +108,20 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       showToast('Add both an option name and at least one choice, or leave both blank.', 'error');
       return;
     }
-    onSave(cleaned);
+    setIsSaving(true);
+    try {
+      await onSave(cleaned);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="modal-backdrop open" aria-hidden="false" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <form className="modal" onSubmit={submit}>
+    <div className="modal-backdrop open" aria-hidden="false" onClick={(event) => { if (!isSaving && event.target === event.currentTarget) onClose(); }}>
+      <form className={`modal${isSaving ? ' is-saving' : ''}`} onSubmit={submit} aria-busy={isSaving}>
         <header className="modal-header">
           <h2 className="modal-title">{product ? 'Edit product' : 'Add a new product'}</h2>
-          <button className="modal-close" type="button" onClick={onClose} aria-label="Close">x</button>
+          <button className="modal-close" type="button" onClick={onClose} aria-label="Close" disabled={isSaving}>x</button>
         </header>
         <div className="modal-body">
           <div className="form-grid">
@@ -140,6 +148,16 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
               <span className="form-label">Available stock *</span>
               <input className="form-control" value={values.stock ?? ''} onChange={(event) => update('stock', event.target.value)} type="number" required min="0" step="1" placeholder="25" />
             </label>
+            <label className="form-group">
+              <span className="form-label">Choice name (optional)</span>
+              <input className="form-control" value={values.optionLabel || ''} onChange={(event) => update('optionLabel', event.target.value)} maxLength={60} placeholder="Size or Mobile model" />
+              <span className="form-help">Leave both choice fields blank when they are not needed.</span>
+            </label>
+            <label className="form-group">
+              <span className="form-label">Available choices (optional)</span>
+              <textarea className="form-control" value={Array.isArray(values.optionValues) ? values.optionValues.join(', ') : values.optionValues || ''} onChange={(event) => update('optionValues', event.target.value)} maxLength={500} placeholder="S, M, L, XL" />
+              <span className="form-help">Separate choices with commas or new lines.</span>
+            </label>
             <div className="form-group full">
               <span className="form-label">Product images</span>
               <div className="image-upload-row">
@@ -162,21 +180,13 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
               <span className="form-label">Description</span>
               <textarea className="form-control" value={values.description || ''} onChange={(event) => update('description', event.target.value)} maxLength={300} placeholder="Add useful product details for brokers" />
             </label>
-            <label className="form-group">
-              <span className="form-label">Choice name</span>
-              <input className="form-control" value={values.optionLabel || ''} onChange={(event) => update('optionLabel', event.target.value)} maxLength={60} placeholder="Size or Mobile model" />
-              <span className="form-help">Leave blank when this product has no selectable choice.</span>
-            </label>
-            <label className="form-group">
-              <span className="form-label">Available choices</span>
-              <textarea className="form-control" value={Array.isArray(values.optionValues) ? values.optionValues.join(', ') : values.optionValues || ''} onChange={(event) => update('optionValues', event.target.value)} maxLength={500} placeholder="S, M, L, XL" />
-              <span className="form-help">Separate choices with commas or new lines.</span>
-            </label>
           </div>
         </div>
         <footer className="modal-footer">
-          <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onClose}>Cancel</button>
-          <button className="btn-dashboard btn-dashboard-primary" type="submit">{product ? 'Save changes' : 'Publish product'}</button>
+          <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onClose} disabled={isSaving}>Cancel</button>
+          <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={isSaving}>
+            {isSaving ? <><span className="button-spinner" aria-hidden="true" />{product ? 'Saving changes...' : 'Publishing...'}</> : product ? 'Save changes' : 'Publish product'}
+          </button>
         </footer>
       </form>
     </div>

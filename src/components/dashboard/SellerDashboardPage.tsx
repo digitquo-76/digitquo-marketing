@@ -528,7 +528,9 @@ function SellerProductDetailForm({
     Number(values.mrp) !== Number(product.mrp) ||
     Number(values.commission) !== Number(product.commission) ||
     Number(values.stock) !== Number(product.stock) ||
-    values.description !== (product.description || '');
+    values.description !== (product.description || '') ||
+    values.optionLabel !== (product.optionLabel || '') ||
+    values.optionValues !== (product.optionValues || []).join(', ');
 
   const reset = () => setValues(productToDetailForm(product));
 
@@ -541,7 +543,9 @@ function SellerProductDetailForm({
       mrp: Number(values.mrp),
       commission: Number(values.commission),
       stock: Number(values.stock),
-      description: values.description.trim()
+      description: values.description.trim(),
+      optionLabel: values.optionLabel.trim(),
+      optionValues: values.optionValues.split(/[,\n]/).map((value) => value.trim()).filter(Boolean)
     };
 
     if (!cleaned.name || !cleaned.category || cleaned.mrp <= 0 || cleaned.commission < 0 || cleaned.stock < 0) {
@@ -550,6 +554,10 @@ function SellerProductDetailForm({
     }
     if (cleaned.commission > cleaned.mrp) {
       showToast('Commission cannot be higher than MRP.', 'error');
+      return;
+    }
+    if ((cleaned.optionLabel && !cleaned.optionValues?.length) || (!cleaned.optionLabel && cleaned.optionValues?.length)) {
+      showToast('Add both a choice name and at least one available choice, or leave both blank.', 'error');
       return;
     }
 
@@ -608,10 +616,22 @@ function SellerProductDetailForm({
         <textarea value={values.description} onChange={(event) => update('description', event.target.value)} maxLength={300} placeholder="Add useful product details for brokers" />
       </label>
 
+      <div className="seller-product-choice-editor">
+        <label className="form-group">
+          <span className="form-label">Choice name (optional)</span>
+          <input className="form-control" value={values.optionLabel} onChange={(event) => update('optionLabel', event.target.value)} maxLength={60} placeholder="Size or Mobile model" />
+        </label>
+        <label className="form-group">
+          <span className="form-label">Available choices (optional)</span>
+          <textarea className="form-control" value={values.optionValues} onChange={(event) => update('optionValues', event.target.value)} maxLength={500} placeholder="S, M, L, XL" />
+          <span className="form-help">Leave both fields blank if choices are not needed. Separate choices with commas or new lines.</span>
+        </label>
+      </div>
+
       <div className="seller-product-edit-actions">
         <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onManagePhotos}><EditIcon /> Edit photos</button>
         <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={reset} disabled={!isDirty || saving}>Reset</button>
-        <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={!isDirty || saving}>{saving ? 'Saving...' : 'Save details'}</button>
+        <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={!isDirty || saving}>{saving ? <><span className="button-spinner" aria-hidden="true" />Saving...</> : 'Save details'}</button>
       </div>
     </form>
   );
@@ -624,6 +644,8 @@ function productToDetailForm(product: Product) {
     mrp: String(product.mrp ?? ''),
     commission: String(product.commission ?? ''),
     stock: String(product.stock ?? ''),
-    description: product.description || ''
+    description: product.description || '',
+    optionLabel: product.optionLabel || '',
+    optionValues: (product.optionValues || []).join(', ')
   };
 }

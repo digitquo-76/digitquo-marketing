@@ -561,6 +561,16 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                     <p>{activeProduct.description || 'No description has been added by the seller yet.'}</p>
                   </div>
 
+                  {activeProduct.optionLabel && activeProduct.optionValues.length ? (
+                    <div className="product-detail-choice-summary">
+                      <h3>{activeProduct.optionLabel}</h3>
+                      <div className="product-detail-choice-list">
+                        {activeProduct.optionValues.map((value) => <span key={value}>{value}</span>)}
+                      </div>
+                      <p>Select one of these choices when placing the order.</p>
+                    </div>
+                  ) : null}
+
                   <button className="btn-dashboard btn-dashboard-primary product-detail-order-button" type="button" onClick={() => setOrderProduct(activeProduct)} disabled={!activeProductInStock}>{activeProductInStock ? 'Place order' : 'Unavailable'}</button>
                   <p className="product-detail-order-note">Secure checkout · Order confirmation sent instantly</p>
                 </div>
