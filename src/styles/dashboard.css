@@ -93,15 +93,16 @@ a {
   letter-spacing: -0.02em;
 }
 
-.dashboard-brand-mark {
+.dashboard-brand .logo-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
-  box-shadow: 0 9px 20px rgba(109, 40, 217, 0.38);
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 9px 20px rgba(109, 40, 217, 0.24);
 }
 
 .dashboard-label {

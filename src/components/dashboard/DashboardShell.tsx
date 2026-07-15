@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogoIcon, MenuIcon } from '../ui/icons';
+import { LogoMark, MenuIcon } from '../ui/icons';
 import { PageSkeleton } from '../ui/PageSkeleton';
 
 interface DashboardShellProps {
@@ -52,7 +52,7 @@ export function DashboardShell({ label, nav, user, title, actions, children }: D
     <div className="dashboard-shell">
       <aside className="sidebar" aria-label={`${label} navigation`}>
         <Link className="dashboard-brand" href="/">
-          <span className="dashboard-brand-mark"><LogoIcon size={19} /></span>DigitQuo Store
+          <LogoMark />DigitQuo Store
         </Link>
         <p className="dashboard-label">{label}</p>
         <nav className="sidebar-nav">

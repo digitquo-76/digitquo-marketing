@@ -9,7 +9,11 @@ export function Svg({ size = 24, strokeWidth = "1.8", children, ...props }: { si
 }
 
 export function LogoMark() {
-  return <span className="logo-mark"><LogoIcon size={18} strokeWidth="2.5" /></span>;
+  return (
+    <span className="logo-mark">
+      <img className="logo-image" src="/digitquo-logo.jpeg" alt="" width="32" height="32" />
+    </span>
+  );
 }
 
 export function LogoIcon({ size = 18, strokeWidth = '2.4' }) {

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { LogoIcon, LogoMark } from './icons';
+import { LogoMark } from './icons';
 
 type PageSkeletonProps = {
   variant: 'marketing' | 'auth' | 'dashboard';
@@ -173,7 +173,7 @@ function DashboardSkeleton() {
       <LoadingStatus />
       <aside className="sidebar skeleton-dashboard-sidebar" aria-hidden="true">
         <div className="dashboard-brand">
-          <span className="dashboard-brand-mark"><LogoIcon size={19} /></span>
+          <LogoMark />
           <SkeletonBlock className="skeleton-on-dark" width="86px" height="18px" />
         </div>
         <SkeletonBlock className="skeleton-on-dark skeleton-sidebar-label" width="86px" height="10px" />

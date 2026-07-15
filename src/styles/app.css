@@ -6,7 +6,7 @@
 
 .product-notice-popup {
   position: fixed;
-  top: 18px;
+  bottom: 24px;
   left: 50%;
   z-index: 1000;
   width: min(calc(100vw - 32px), 430px);
@@ -27,7 +27,7 @@
 @keyframes product-notice-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -10px);
+    transform: translate(-50%, 12px);
   }
 
   to {
@@ -38,7 +38,7 @@
 
 @media (max-width: 640px) {
   .product-notice-popup {
-    top: 12px;
+    bottom: max(16px, env(safe-area-inset-bottom));
     width: calc(100vw - 24px);
     padding: 13px 16px;
     font-size: 0.86rem;
