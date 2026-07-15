@@ -137,7 +137,14 @@ export function useDigitQuoStore() {
       createdAt: new Date().toISOString()
     };
     setProductsState(prev => [newProduct, ...prev]);
-    const { error } = await supabase.from('products').insert(mapProductToDB(newProduct));
+    let { error } = await supabase.from('products').insert(mapProductToDB(newProduct));
+    if (error && isMissingProductOptionSchema(error)) {
+      if (hasProductOptions(newProduct)) {
+        setProductsState(prev => prev.filter(p => p.id !== newProduct.id));
+        throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
+      }
+      ({ error } = await supabase.from('products').insert(mapProductToDB(newProduct, false)));
+    }
     if (error) {
       setProductsState(prev => prev.filter(p => p.id !== newProduct.id));
       throw error;
@@ -147,7 +154,14 @@ export function useDigitQuoStore() {
   const updateProduct = async (product: Product) => {
     const previous = products;
     setProductsState(prev => prev.map(p => p.id === product.id ? product : p));
-    const { error } = await supabase.from('products').update(mapProductToDB(product)).eq('id', product.id);
+    let { error } = await supabase.from('products').update(mapProductToDB(product)).eq('id', product.id);
+    if (error && isMissingProductOptionSchema(error)) {
+      if (hasProductOptions(product)) {
+        setProductsState(previous);
+        throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
+      }
+      ({ error } = await supabase.from('products').update(mapProductToDB(product, false)).eq('id', product.id));
+    }
     if (error) {
       setProductsState(previous);
       throw error;
@@ -321,8 +335,8 @@ export function useDigitQuoStore() {
 }
 
 // Mapping helpers to align TypeScript frontend with Postgres snake_case tables
-function mapProductToDB(p: Product) {
-  return {
+function mapProductToDB(p: Product, includeOptions = true) {
+  const row: Record<string, unknown> = {
     id: p.id,
     name: p.name,
     category: p.category,
@@ -333,10 +347,25 @@ function mapProductToDB(p: Product) {
     seller: p.seller,
     image: p.image,
     description: p.description,
-    option_label: p.optionLabel || '',
-    option_values: p.optionValues || [],
     created_at: p.createdAt
   };
+  if (includeOptions) {
+    row.option_label = p.optionLabel || '';
+    row.option_values = p.optionValues || [];
+  }
+  return row;
+}
+
+const PRODUCT_OPTIONS_MIGRATION_MESSAGE = 'Product choices are not enabled in Supabase yet. Run the latest database.sql in the Supabase SQL Editor, then try again.';
+
+function hasProductOptions(product: Product) {
+  return Boolean(product.optionLabel?.trim() || product.optionValues?.length);
+}
+
+function isMissingProductOptionSchema(error: any) {
+  const message = String(error?.message || error?.details || '').toLowerCase();
+  return ['42703', 'pgrst204'].includes(String(error?.code || '').toLowerCase())
+    && (message.includes('option_label') || message.includes('option_values'));
 }
 function mapProductFromDB(p: any): Product {
   const mrp = Number(p.mrp ?? p.price ?? 0);
