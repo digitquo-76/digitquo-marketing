@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, ShieldIcon } from '../../../components/ui/icons';
-import { PageSkeleton } from '../../../components/ui/PageSkeleton';
 import { getAuthCallbackUrl, routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
 import { ensureUserProfile } from '../../../lib/profile';
@@ -16,7 +15,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [showCreateAccountPrompt, setShowCreateAccountPrompt] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [resetSubmitting, setResetSubmitting] = useState(false);
 
@@ -29,14 +27,10 @@ export default function LoginPage() {
 
       if (sessionError) {
         setError(sessionError.message);
-        setCheckingSession(false);
         return;
       }
 
-      if (!session?.user) {
-        setCheckingSession(false);
-        return;
-      }
+      if (!session?.user) return;
 
       try {
         const profile = await ensureUserProfile(session.user);
@@ -44,7 +38,6 @@ export default function LoginPage() {
       } catch (profileError) {
         if (mounted) {
           setError(profileError instanceof Error ? profileError.message : 'Could not prepare your account profile.');
-          setCheckingSession(false);
         }
       }
     }
@@ -123,8 +116,6 @@ export default function LoginPage() {
 
     setNotice('Password reset link sent. Check your email and open the link to set a new password.');
   };
-
-  if (checkingSession) return <PageSkeleton variant="auth" />;
 
   return (
     <main className="auth-main">

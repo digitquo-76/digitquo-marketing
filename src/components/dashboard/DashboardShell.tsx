@@ -4,7 +4,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogoMark, MenuIcon } from '../ui/icons';
-import { PageSkeleton } from '../ui/PageSkeleton';
+
+const dashboardDateFormatter = new Intl.DateTimeFormat('en-IN', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long'
+});
 
 interface DashboardShellProps {
   label: string;
@@ -19,22 +24,15 @@ export function DashboardShell({ label, nav, user, title, actions, children }: D
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   
-  // Need to be careful with hydration mismatch on date. 
   const [dateLabel, setDateLabel] = useState('');
   useEffect(() => {
-    setDateLabel(new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()));
+    setDateLabel(dashboardDateFormatter.format(new Date()));
   }, []);
 
   useEffect(() => {
     document.body.classList.toggle('sidebar-open', sidebarOpen);
     return () => document.body.classList.remove('sidebar-open');
   }, [sidebarOpen]);
-
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -43,10 +41,6 @@ export function DashboardShell({ label, nav, user, title, actions, children }: D
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
-
-  if (!mounted) {
-    return <PageSkeleton variant="dashboard" />;
-  }
 
   return (
     <div className="dashboard-shell">

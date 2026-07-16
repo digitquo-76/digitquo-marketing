@@ -1,17 +1,21 @@
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0
+});
+
+const dateFormatter = new Intl.DateTimeFormat('en-IN', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric'
+});
+
 export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0
-  }).format(Number(value) || 0);
+  return currencyFormatter.format(Number(value) || 0);
 }
 
 export function formatDate(value: string | Date): string {
-  return new Intl.DateTimeFormat('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  }).format(new Date(value));
+  return dateFormatter.format(new Date(value));
 }
 
 export function relativeTime(value: string | Date): string {

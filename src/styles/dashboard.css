@@ -26,7 +26,7 @@ html {
   scroll-behavior: smooth;
 }
 
-html[data-route="dashboard"] body {
+.dashboard-route {
   min-height: 100vh;
   color: var(--dashboard-text);
   background:
@@ -789,6 +789,8 @@ a {
 }
 
 .catalog-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 380px;
   overflow: hidden;
   border: 1px solid var(--dashboard-border);
   border-radius: 15px;
@@ -1493,7 +1495,7 @@ textarea.form-control {
   }
 }
 
-html[data-route="dashboard"] body {
+.dashboard-route {
   width: 100%;
   max-width: 100%;
 }

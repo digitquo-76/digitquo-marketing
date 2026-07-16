@@ -11,7 +11,7 @@ export function Svg({ size = 24, strokeWidth = "1.8", children, ...props }: { si
 export function LogoMark() {
   return (
     <span className="logo-mark">
-      <img className="logo-image" src="/digitquo-logo.jpeg" alt="" width="32" height="32" />
+      <img className="logo-image" src="/favicon.png?v=1" alt="" width="32" height="32" decoding="async" />
     </span>
   );
 }

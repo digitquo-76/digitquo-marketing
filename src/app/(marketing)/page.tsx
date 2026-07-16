@@ -19,18 +19,18 @@ export default function LandingPage() {
 
       <header id="hero" className="hero">
         <div className="container hero-inner">
-          <div className="hero-badge reveal">
+          <div className="hero-badge">
             <span className="badge-dot" />
             <span>Now open for early access</span>
           </div>
-          <h1 className="hero-title reveal reveal-delay-1">
+          <h1 className="hero-title">
             The marketplace<br />built for <span className="text-gradient">modern trade</span>
           </h1>
-          <p className="hero-subtitle reveal reveal-delay-2">
+          <p className="hero-subtitle">
             DigitQuo Store connects sellers and brokers on one seamless platform.<br className="hide-mobile" />
             List products, discover deals, and scale your business - effortlessly.
           </p>
-          <div className="hero-cta reveal reveal-delay-3">
+          <div className="hero-cta">
             <a href="#roles" className="btn btn-primary btn-lg" id="hero-cta-start">
               Start for free <ArrowRightIcon size={16} />
             </a>
@@ -38,7 +38,7 @@ export default function LandingPage() {
               <PlayIcon /> See how it works
             </a>
           </div>
-          <div className="hero-stats reveal reveal-delay-4">
+          <div className="hero-stats">
             <HeroStat target={2500} suffix="+" label="Sellers" />
             <div className="hero-stat-divider" />
             <HeroStat target={800} suffix="+" label="Active Brokers" />

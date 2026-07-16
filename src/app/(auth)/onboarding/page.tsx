@@ -6,7 +6,7 @@ import { ArrowRightIcon, HomeIcon, UsersIcon } from '../../../components/ui/icon
 import { PageSkeleton } from '../../../components/ui/PageSkeleton';
 import { routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
-import { ensureUserProfile } from '../../../lib/profile';
+import { clearCachedUserProfile, ensureUserProfile } from '../../../lib/profile';
 
 type Role = 'seller' | 'broker';
 
@@ -129,6 +129,8 @@ export default function OnboardingPage() {
       setError(updateError?.message || 'Could not save your profile details.');
       return;
     }
+
+    clearCachedUserProfile(userId);
 
     await supabase.auth.updateUser({
       data: {

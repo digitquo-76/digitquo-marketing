@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { supabase } from '../../lib/supabase';
@@ -11,10 +12,11 @@ import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '
 import { DashboardShell } from './DashboardShell';
 import { AnalyticsBarChart, AnalyticsRanking } from './Analytics';
 import { EmptyRow, Metric, ProductImage, ProductImageCarousel } from './Shared';
-import { OrderModal } from './Modals';
 import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
 import { BackIcon, ChartIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon } from '../ui/icons';
+
+const OrderModal = dynamic(() => import('./Modals').then((module) => module.OrderModal), { ssr: false });
 
 type BrokerSection = 'overview' | 'catalog' | 'sales' | 'analytics' | 'rewards' | 'product';
 
@@ -50,7 +52,13 @@ declare global {
 }
 
 export function BrokerDashboardPage({ section, productId }: { section: BrokerSection; productId?: string }) {
-  const store = useDigitQuoStore();
+  const store = useDigitQuoStore({
+    loadProducts: section === 'overview' || section === 'catalog' || section === 'product',
+    loadSales: section === 'overview' || section === 'sales' || section === 'analytics' || section === 'rewards',
+    loadClaims: section === 'overview' || section === 'rewards',
+    productImages: section === 'catalog' ? 'all' : section === 'product' ? 'active' : 'none',
+    productId
+  });
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
@@ -617,7 +625,7 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
           )
         )}
       </DashboardShell>
-      <OrderModal product={orderProduct} onClose={() => setOrderProduct(null)} onSave={placeOrder} submitting={isPaying} />
+      {orderProduct && <OrderModal product={orderProduct} onClose={() => setOrderProduct(null)} onSave={placeOrder} submitting={isPaying} />}
       <ToastRegion toasts={store.toasts} />
     </>
   );

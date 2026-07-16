@@ -1,5 +1,3 @@
-@import "tailwindcss";
-
 .product-notice-popup {
   position: fixed;
   bottom: 24px;

@@ -14,7 +14,13 @@ import { ActivityIcon, BackIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, Sh
 type AdminSection = 'overview' | 'activity' | 'products' | 'transactions' | 'claims';
 
 export function AdminDashboardPage({ section }: { section: AdminSection }) {
-  const store = useDigitQuoStore();
+  const store = useDigitQuoStore({
+    loadProducts: section === 'overview' || section === 'products',
+    loadSales: section === 'overview' || section === 'transactions',
+    loadClaims: section === 'overview' || section === 'claims',
+    loadActivity: section === 'activity',
+    productImages: section === 'products' ? 'all' : 'none'
+  });
   const router = useRouter();
   const [productSearch, setProductSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');

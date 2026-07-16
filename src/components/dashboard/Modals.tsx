@@ -2,34 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { formatCurrency, getProductImages, serializeProductImages } from '../../lib/utils';
-
-export const PRODUCT_CATEGORIES = [
-  'Clothing',
-  'Accessories',
-  'Footwear',
-  'Beauty & Personal Care',
-  'Electronics',
-  'Mobiles & Gadgets',
-  'Home & Living',
-  'Kitchen & Dining',
-  'Furniture',
-  'Food & Beverages',
-  'Grocery & Staples',
-  'Health & Wellness',
-  'Baby & Kids',
-  'Toys & Games',
-  'Books & Stationery',
-  'Sports & Fitness',
-  'Automotive',
-  'Hardware & Tools',
-  'Jewellery',
-  'Bags & Luggage',
-  'Pet Supplies',
-  'Office Supplies',
-  'Other'
-];
+import { PRODUCT_CATEGORIES } from './productCategories';
 
 const PRODUCT_IMAGE_MAX_SIZE_MB = 20;
+const PRODUCT_IMAGE_MAX_DIMENSION = 1600;
+const PRODUCT_IMAGE_TARGET_SIZE = 1.25 * 1024 * 1024;
 const ORDER_SHIPPING_CHARGE = 50;
 
 export function ProductModal({ open, product, onClose, onSave, showToast }: any) {
@@ -56,7 +33,7 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
   if (!open) return null;
 
   const update = (key: string, value: string) => setValues((current: any) => ({ ...current, [key]: value }));
-  const images = getProductImages(String(values.image || ''));
+  const images = useMemo(() => getProductImages(String(values.image || '')), [values.image]);
   const setImages = (nextImages: string[]) => update('image', serializeProductImages(nextImages));
 
   const updateImageFiles = (files?: FileList | null) => {
@@ -77,9 +54,9 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       return;
     }
 
-    Promise.all(selected.map((file) => readImageFile(file)))
+    Promise.all(selected.map((file) => readOptimizedImageFile(file)))
       .then((nextImages) => setImages([...images, ...nextImages]))
-      .catch(() => showToast('Could not read one of those images. Try again.', 'error'));
+      .catch(() => showToast('Could not optimize one of those images. Try another file.', 'error'));
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -174,7 +151,7 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
                   <input type="file" accept="image/*" multiple onChange={(event) => updateImageFiles(event.target.files)} />
                 </label>
               </div>
-              <span className="form-help">Select up to 8 images from your mobile gallery or computer. Max size: {PRODUCT_IMAGE_MAX_SIZE_MB} MB each.</span>
+              <span className="form-help">Select up to 8 images. Photos are automatically resized for fast loading. Max input size: {PRODUCT_IMAGE_MAX_SIZE_MB} MB each.</span>
             </div>
             <label className="form-group full">
               <span className="form-label">Description</span>
@@ -193,12 +170,68 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
   );
 }
 
-function readImageFile(file: File) {
+async function readOptimizedImageFile(file: File) {
+  const decoded = await decodeImage(file);
+  const scale = Math.min(1, PRODUCT_IMAGE_MAX_DIMENSION / Math.max(decoded.width, decoded.height));
+  const width = Math.max(1, Math.round(decoded.width * scale));
+  const height = Math.max(1, Math.round(decoded.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext('2d', { alpha: true });
+  if (!context) {
+    decoded.cleanup();
+    throw new Error('Canvas is unavailable.');
+  }
+
+  context.drawImage(decoded.source, 0, 0, width, height);
+  decoded.cleanup();
+
+  let optimized: Blob | null = null;
+  for (const quality of [0.82, 0.7, 0.58]) {
+    optimized = await canvasToBlob(canvas, 'image/webp', quality);
+    if (optimized.size <= PRODUCT_IMAGE_TARGET_SIZE) break;
+  }
+
+  return readBlobAsDataUrl(optimized);
+}
+
+async function decodeImage(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; cleanup: () => void }> {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      return { source: bitmap, width: bitmap.width, height: bitmap.height, cleanup: () => bitmap.close() };
+    } catch {
+      // Fall through to the broadly supported image-element decoder.
+    }
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.decoding = 'async';
+  image.src = objectUrl;
+  await image.decode();
+  return {
+    source: image,
+    width: image.naturalWidth,
+    height: image.naturalHeight,
+    cleanup: () => URL.revokeObjectURL(objectUrl)
+  };
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Image optimization failed.')), type, quality);
+  });
+}
+
+function readBlobAsDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
     reader.onerror = reject;
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
 }
 

@@ -1,17 +1,15 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { ArrowRightIcon, HomeIcon, UsersIcon } from '../../../components/ui/icons';
-import { PageSkeleton } from '../../../components/ui/PageSkeleton';
 import { getAuthCallbackUrl, routeForProfile } from '../../../lib/utils';
 import { supabase } from '../../../lib/supabase';
 import { ensureUserProfile } from '../../../lib/profile';
 
 function RegisterForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [step, setStep] = useState<'account' | 'details'>('account');
   const [role, setRole] = useState<'seller' | 'broker'>('seller');
   const [name, setName] = useState('');
@@ -31,9 +29,9 @@ function RegisterForm() {
   const registrationInFlight = useRef(false);
 
   useEffect(() => {
-    const roleParam = searchParams.get('role');
+    const roleParam = new URLSearchParams(window.location.search).get('role');
     if (roleParam === 'broker' || roleParam === 'seller') setRole(roleParam);
-  }, [searchParams]);
+  }, []);
 
   const continueToDetails = (event: React.FormEvent) => {
     event.preventDefault();
@@ -289,9 +287,5 @@ function hasPayoutDetails(values: { payoutAccountName: string; payoutBankName: s
 }
 
 export default function RegisterPage() {
-  return (
-    <Suspense fallback={<PageSkeleton variant="auth" />}>
-      <RegisterForm />
-    </Suspense>
-  );
+  return <RegisterForm />;
 }

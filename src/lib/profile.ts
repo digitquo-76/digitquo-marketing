@@ -17,6 +17,18 @@ export type AppProfile = {
   onboarding_complete?: boolean | null;
 };
 
+const pendingProfiles = new Map<string, Promise<AppProfile>>();
+const cachedProfiles = new Map<string, AppProfile>();
+
+export function cacheUserProfile(profile: AppProfile) {
+  cachedProfiles.set(profile.id, profile);
+}
+
+export function clearCachedUserProfile(userId: string) {
+  cachedProfiles.delete(userId);
+  pendingProfiles.delete(userId);
+}
+
 function hasPayoutDetails(values: {
   payout_account_name?: string | null;
   payout_bank_name?: string | null;
@@ -34,14 +46,32 @@ function hasPayoutDetails(values: {
 }
 
 export async function ensureUserProfile(user: User): Promise<AppProfile> {
+  const cached = cachedProfiles.get(user.id);
+  if (cached) return cached;
+
+  const pending = pendingProfiles.get(user.id);
+  if (pending) return pending;
+
+  const request = loadOrCreateUserProfile(user).finally(() => {
+    pendingProfiles.delete(user.id);
+  });
+  pendingProfiles.set(user.id, request);
+  return request;
+}
+
+async function loadOrCreateUserProfile(user: User): Promise<AppProfile> {
   const { data: existing, error: selectError } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id,role,email,display_name,business_name,business_type,market,payout_account_name,payout_bank_name,payout_account_number,payout_ifsc,payout_upi,onboarding_complete')
     .eq('id', user.id)
     .maybeSingle();
 
   if (selectError) throw selectError;
-  if (existing) return existing as AppProfile;
+  if (existing) {
+    const profile = existing as AppProfile;
+    cacheUserProfile(profile);
+    return profile;
+  }
 
   const metadata = user.user_metadata || {};
   const role = metadata.role === 'broker' ? 'broker' : 'seller';
@@ -78,5 +108,7 @@ export async function ensureUserProfile(user: User): Promise<AppProfile> {
     .single();
 
   if (insertError) throw insertError;
-  return created as AppProfile;
+  const createdProfile = created as AppProfile;
+  cacheUserProfile(createdProfile);
+  return createdProfile;
 }

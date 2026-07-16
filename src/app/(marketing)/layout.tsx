@@ -9,15 +9,9 @@ export const metadata = {
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-route="landing" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/favicon.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      </head>
-      <body>
-        <ProductNoticePopup />
-        {children}
-      </body>
-    </html>
+    <div className="marketing-route">
+      <ProductNoticePopup />
+      {children}
+    </div>
   );
 }

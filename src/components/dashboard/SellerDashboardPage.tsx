@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { Product } from '../../types';
@@ -10,10 +11,12 @@ import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '
 import { DashboardShell } from './DashboardShell';
 import { AnalyticsBarChart, AnalyticsRanking } from './Analytics';
 import { EmptyRow, Metric, ProductCell, ProductImageCarousel, StockBadge } from './Shared';
-import { PRODUCT_CATEGORIES, ProductModal } from './Modals';
+import { PRODUCT_CATEGORIES } from './productCategories';
 import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
 import { BackIcon, ChartIcon, EditIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, TrashIcon, UsersIcon } from '../ui/icons';
+
+const ProductModal = dynamic(() => import('./Modals').then((module) => module.ProductModal), { ssr: false });
 
 type SellerSection = 'overview' | 'products' | 'orders' | 'analytics' | 'product';
 type ProductSaveValues = {
@@ -29,7 +32,12 @@ type ProductSaveValues = {
 };
 
 export function SellerDashboardPage({ section, productId }: { section: SellerSection; productId?: string }) {
-  const store = useDigitQuoStore();
+  const store = useDigitQuoStore({
+    loadProducts: section === 'overview' || section === 'products' || section === 'product',
+    loadSales: section === 'overview' || section === 'orders' || section === 'analytics' || section === 'product',
+    productImages: section === 'products' ? 'all' : section === 'product' ? 'active' : 'none',
+    productId
+  });
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -494,7 +502,7 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
           )
         )}
       </DashboardShell>
-      <ProductModal open={modalOpen} product={editing} onClose={() => { setModalOpen(false); setEditing(null); }} onSave={saveProduct} showToast={store.showToast} />
+      {modalOpen && <ProductModal open product={editing} onClose={() => { setModalOpen(false); setEditing(null); }} onSave={saveProduct} showToast={store.showToast} />}
       <ToastRegion toasts={store.toasts} />
     </>
   );

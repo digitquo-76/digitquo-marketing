@@ -1,10 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-import type { SupportedStorage } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const authCookieName = 'digitquo_supabase_auth';
-const cookieChunkSize = 3000;
 const maxCookieChunks = 20;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
@@ -21,14 +19,10 @@ function readCookie(name: string) {
   return decodeURIComponent(cookie.split('=').slice(1).join('='));
 }
 
-function writeCookie(name: string, value: string, maxAge = 604800) {
+function removeCookie(name: string) {
   if (typeof document === 'undefined') return;
   const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
-}
-
-function removeCookie(name: string) {
-  writeCookie(name, '', 0);
+  document.cookie = `${encodeURIComponent(name)}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
 }
 
 function clearChunkedCookie(key: string) {
@@ -40,49 +34,36 @@ function clearChunkedCookie(key: string) {
   removeCookie(`${key}.chunks`);
 }
 
-const cookieStorage: SupportedStorage = {
-  getItem(key: string) {
-    if (typeof document === 'undefined') return null;
-    const singleCookieValue = readCookie(key);
-    if (singleCookieValue) return singleCookieValue;
-
-    const chunkCount = Number(readCookie(`${key}.chunks`) || 0);
-    if (!chunkCount) return null;
-
-    let value = '';
-    for (let index = 0; index < chunkCount; index += 1) {
-      const chunk = readCookie(`${key}.${index}`);
-      if (chunk === null) return null;
-      value += chunk;
-    }
-
-    return value;
-  },
-  setItem(key: string, value: string) {
-    if (typeof document === 'undefined') return;
-    clearChunkedCookie(key);
-
-    if (value.length <= cookieChunkSize) {
-      writeCookie(key, value);
+function migrateLegacyCookieSession() {
+  if (typeof window === 'undefined') return;
+  try {
+    let legacyValue = readCookie(authCookieName);
+    const chunkCount = Number(readCookie(`${authCookieName}.chunks`) || 0);
+    if (window.localStorage.getItem(authCookieName)) {
+      if (legacyValue || chunkCount > 0) clearChunkedCookie(authCookieName);
       return;
     }
 
-    const chunks = value.match(new RegExp(`.{1,${cookieChunkSize}}`, 'g')) || [];
-    writeCookie(`${key}.chunks`, String(chunks.length));
-    chunks.forEach((chunk, index) => writeCookie(`${key}.${index}`, chunk));
-  },
-  removeItem(key: string) {
-    if (typeof document === 'undefined') return;
-    clearChunkedCookie(key);
+    if (!legacyValue && chunkCount > 0) {
+      legacyValue = Array.from({ length: chunkCount }, (_, index) => readCookie(`${authCookieName}.${index}`) || '').join('');
+    }
+
+    if (legacyValue) {
+      window.localStorage.setItem(authCookieName, legacyValue);
+      clearChunkedCookie(authCookieName);
+    }
+  } catch {
+    // Supabase will fall back to its normal in-memory behavior when storage is unavailable.
   }
-};
+}
+
+migrateLegacyCookieSession();
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     flowType: 'implicit',
     detectSessionInUrl: false,
     persistSession: true,
-    storage: cookieStorage,
     storageKey: authCookieName
   }
 });

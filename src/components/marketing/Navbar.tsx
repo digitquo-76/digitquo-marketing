@@ -10,30 +10,47 @@ export function Navbar() {
   const [activeSection, setActiveSection] = useState('');
 
   useEffect(() => {
-    const updateScrolled = () => setScrolled(window.scrollY > 40);
-    updateScrolled();
-    window.addEventListener('scroll', updateScrolled, { passive: true });
-    return () => window.removeEventListener('scroll', updateScrolled);
-  }, []);
+    const sectionIds = ['features', 'how-it-works', 'roles', 'testimonials', 'contact'];
+    let sectionOffsets: [string, number][] = [];
+    let viewportHeight = window.innerHeight;
+    let frameId = 0;
 
-  useEffect(() => {
-    const sections = ['features', 'how-it-works', 'roles', 'testimonials', 'contact'];
-    const updateActiveSection = () => {
-      const navbarHeight = document.getElementById('navbar')?.offsetHeight || 0;
-      const marker = window.scrollY + navbarHeight + window.innerHeight * 0.28;
-      let active = '';
-      sections.forEach((id) => {
+    const measure = () => {
+      viewportHeight = window.innerHeight;
+      sectionOffsets = sectionIds.flatMap((id) => {
         const section = document.getElementById(id);
-        if (section && marker >= section.offsetTop) active = id;
+        return section ? [[id, section.offsetTop] as [string, number]] : [];
+      });
+    };
+
+    const update = () => {
+      frameId = 0;
+      setScrolled(window.scrollY > 40);
+      const navbarHeight = document.getElementById('navbar')?.offsetHeight || 0;
+      const marker = window.scrollY + navbarHeight + viewportHeight * 0.28;
+      let active = '';
+      sectionOffsets.forEach(([id, offsetTop]) => {
+        if (marker >= offsetTop) active = id;
       });
       setActiveSection(active);
     };
-    updateActiveSection();
-    window.addEventListener('scroll', updateActiveSection, { passive: true });
-    window.addEventListener('resize', updateActiveSection);
+
+    const scheduleUpdate = () => {
+      if (!frameId) frameId = window.requestAnimationFrame(update);
+    };
+    const handleResize = () => {
+      measure();
+      scheduleUpdate();
+    };
+
+    measure();
+    update();
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', handleResize);
     return () => {
-      window.removeEventListener('scroll', updateActiveSection);
-      window.removeEventListener('resize', updateActiveSection);
+      if (frameId) window.cancelAnimationFrame(frameId);
+      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 

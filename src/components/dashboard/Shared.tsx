@@ -29,7 +29,7 @@ export function ProductCell({ product }: { product: Product }) {
 
 export function ProductImage({ product }: { product: Product }) {
   const image = getProductImages(product.image || '')[0] || '';
-  return image ? <img src={image} alt="" loading="lazy" /> : <>{product.name.slice(0, 2).toUpperCase()}</>;
+  return image ? <img src={image} alt="" loading="lazy" decoding="async" /> : <>{product.name.slice(0, 2).toUpperCase()}</>;
 }
 
 export function ProductImageCarousel({ product }: { product: Product }) {
@@ -156,7 +156,7 @@ export function ProductImageCarousel({ product }: { product: Product }) {
         <div className="product-image-thumbnails" role="group" aria-label="Choose a product image">
           {slides.map((image, index) => (
             <button className={`product-image-thumbnail${activeIndex === index ? ' active' : ''}`} type="button" onClick={() => showImage(index)} aria-label={`Show image ${index + 1} of ${slides.length}`} aria-pressed={activeIndex === index} key={`${image.slice(0, 48)}-thumb-${index}`}>
-              {image ? <img src={image} alt="" /> : <span>{product.name.slice(0, 2).toUpperCase()}</span>}
+              {image ? <img src={image} alt="" loading="lazy" decoding="async" /> : <span>{product.name.slice(0, 2).toUpperCase()}</span>}
             </button>
           ))}
         </div>

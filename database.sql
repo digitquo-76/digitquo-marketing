@@ -117,11 +117,16 @@ create table if not exists public.activity (
 );
 
 create index if not exists products_seller_idx on public.products (seller);
+create index if not exists products_seller_created_at_idx on public.products (seller, created_at desc);
 create index if not exists sales_broker_idx on public.sales (broker);
 create index if not exists sales_seller_idx on public.sales (seller);
+create index if not exists sales_broker_created_at_idx on public.sales (broker, created_at desc);
+create index if not exists sales_seller_created_at_idx on public.sales (seller, created_at desc);
 create unique index if not exists sales_razorpay_payment_id_key on public.sales (razorpay_payment_id) where razorpay_payment_id is not null;
 create unique index if not exists sales_razorpay_order_id_key on public.sales (razorpay_order_id) where razorpay_order_id is not null;
 create index if not exists claims_broker_idx on public.claims (broker);
+create index if not exists claims_broker_created_at_idx on public.claims (broker, created_at desc);
+create index if not exists claims_status_created_at_idx on public.claims (status, created_at desc);
 create index if not exists activity_created_at_idx on public.activity (created_at desc);
 
 alter table public.profiles enable row level security;
@@ -611,3 +616,36 @@ drop policy if exists "signed in users create activity" on public.activity;
 create policy "signed in users create activity"
 on public.activity for insert
 with check (auth.role() = 'authenticated');
+
+-- Product binaries belong in Storage so catalog queries only transfer short CDN URLs.
+-- The application gracefully falls back to compressed inline images until this migration is applied.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'product-images',
+  'product-images',
+  true,
+  2097152,
+  array['image/webp', 'image/jpeg', 'image/png']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "users upload own product images" on storage.objects;
+create policy "users upload own product images"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'product-images'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+drop policy if exists "users delete own product images" on storage.objects;
+create policy "users delete own product images"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'product-images'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
