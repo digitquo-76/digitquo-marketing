@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { normalizeSelectedProductOptions } from '../../../../lib/productOptions';
 
 type SaleRow = {
   id: string;
@@ -11,6 +12,7 @@ type SaleRow = {
   customer_phone: string;
   customer_address: string;
   order_notes: string;
+  selected_options?: unknown;
   selected_option_label: string;
   selected_option_value: string;
   quantity: number;
@@ -134,7 +136,7 @@ function buildOrderEmailHtml(order: SaleRow, sellerName: string) {
   const rows = [
     ['Product', order.product_name],
     ['Quantity', String(order.quantity)],
-    ...(order.selected_option_value ? [[order.selected_option_label || 'Option', order.selected_option_value]] : []),
+    ...getSelectedOptionRows(order),
     ['Broker', order.broker],
     ['Customer', order.customer],
     ['Customer phone', order.customer_phone],
@@ -167,7 +169,7 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
     '',
     `Product: ${order.product_name}`,
     `Quantity: ${order.quantity}`,
-    ...(order.selected_option_value ? [`${order.selected_option_label || 'Option'}: ${order.selected_option_value}`] : []),
+    ...getSelectedOptionTextLines(order),
     `Broker: ${order.broker}`,
     `Customer: ${order.customer}`,
     `Customer phone: ${order.customer_phone}`,
@@ -175,6 +177,22 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
     `Order notes: ${order.order_notes || 'None'}`,
     `Total: ${formatRupees(order.total)}`
   ].join('\n');
+}
+
+function getSelectedOptionRows(order: SaleRow): string[][] {
+  return getSelectedOptions(order).map((selection) => [selection.label, selection.value]);
+}
+
+function getSelectedOptionTextLines(order: SaleRow) {
+  return getSelectedOptions(order).map((selection) => `${selection.label}: ${selection.value}`);
+}
+
+function getSelectedOptions(order: SaleRow) {
+  return normalizeSelectedProductOptions(
+    order.selected_options,
+    order.selected_option_label,
+    order.selected_option_value
+  );
 }
 
 function formatRupees(value: number) {

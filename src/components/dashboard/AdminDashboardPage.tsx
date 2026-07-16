@@ -1,31 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
+import { isDefaultProductCategory, mergeProductCategoryNames, productCategoryKey } from '../../lib/categories';
+import { useProductCategories } from '../../lib/useProductCategories';
 import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { ActivityList, EmptyRow, Metric, ProductCell, StockBadge } from './Shared';
+import { SelectedProductOptionsSummary } from './ProductOptionGroupsEditor';
 import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
-import { ActivityIcon, BackIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, ShieldIcon, UsersIcon, WalletIcon } from '../ui/icons';
+import { ActivityIcon, BackIcon, GridIcon, LayersIcon, PackageIcon, SaleIcon, SearchIcon, ShieldIcon, UsersIcon, WalletIcon } from '../ui/icons';
 
-type AdminSection = 'overview' | 'activity' | 'products' | 'transactions' | 'claims';
+type AdminSection = 'overview' | 'activity' | 'products' | 'categories' | 'transactions' | 'claims';
 
 export function AdminDashboardPage({ section }: { section: AdminSection }) {
   const store = useDigitQuoStore({
-    loadProducts: section === 'overview' || section === 'products',
+    loadProducts: section === 'overview' || section === 'products' || section === 'categories',
     loadSales: section === 'overview' || section === 'transactions',
     loadClaims: section === 'overview' || section === 'claims',
     loadActivity: section === 'activity',
     productImages: section === 'products' ? 'all' : 'none'
   });
   const router = useRouter();
+  const categoryCatalog = useProductCategories({ enabled: Boolean(store.user) && section === 'categories' });
   const [productSearch, setProductSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sellerFilter, setSellerFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryError, setCategoryError] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
   
   useEffect(() => {
     if (store.loading) return;
@@ -77,6 +84,36 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
     }
   };
 
+  const createCategory = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (creatingCategory) return;
+
+    setCreatingCategory(true);
+    setCategoryError('');
+    try {
+      const category = await categoryCatalog.createCategory(newCategoryName);
+      setNewCategoryName('');
+      store.showToast(`${category.name} is now available as a product category.`, 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not create that category.';
+      setCategoryError(message);
+      store.showToast(message, 'error');
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
+  const categoryRecordByKey = new Map(categoryCatalog.categories.map((category) => [category.key, category]));
+  const categoryUsage = new Map<string, number>();
+  for (const product of store.products) {
+    const key = productCategoryKey(product.category);
+    if (key) categoryUsage.set(key, (categoryUsage.get(key) || 0) + 1);
+  }
+  const managedCategoryNames = mergeProductCategoryNames(
+    categoryCatalog.categories.map((category) => category.name),
+    store.products.map((product) => product.category)
+  ).sort((first, second) => first.localeCompare(second));
+
   return (
     <>
       <DashboardShell
@@ -85,6 +122,7 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
           ['/admin', 'Overview', <GridIcon key="grid" />],
           ['/admin/activity', 'All activity', <ActivityIcon key="activity" />],
           ['/admin/products', 'All products', <PackageIcon key="package" />],
+          ['/admin/categories', 'Categories', <LayersIcon key="categories" />],
           ['/admin/transactions', 'Transactions', <SaleIcon key="sale" />],
           ['/admin/claims', 'Claims & Payouts', <WalletIcon key="wallet" />],
           ['/profile', 'My profile', <UsersIcon size={18} key="profile" />],
@@ -226,6 +264,93 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
           </>
         )}
 
+        {section === 'categories' && (
+          <>
+            <section className="page-heading">
+              <div>
+                <p className="eyebrow">Catalog structure</p>
+                <h1 className="page-title">Product categories.</h1>
+                <p className="page-description">Create categories for sellers and review which categories are currently used across the marketplace.</p>
+              </div>
+            </section>
+
+            {categoryCatalog.loadError && (
+              <div className="admin-notice">
+                <ShieldIcon size={24} />
+                <div>
+                  <strong>Built-in categories are still available</strong>
+                  {categoryCatalog.loadError}
+                </div>
+              </div>
+            )}
+
+            <section className="dashboard-card">
+              <header className="dashboard-card-header">
+                <div>
+                  <h2 className="dashboard-card-title">Create a category</h2>
+                  <p className="dashboard-card-subtitle">New categories become available to product forms after they are saved</p>
+                </div>
+              </header>
+              <form className="dashboard-card-body" onSubmit={createCategory}>
+                <div className="form-grid">
+                  <label className="form-group full">
+                    <span className="form-label">Category name *</span>
+                    <input
+                      className="form-control"
+                      value={newCategoryName}
+                      onChange={(event) => { setNewCategoryName(event.target.value); setCategoryError(''); }}
+                      required
+                      maxLength={80}
+                      placeholder="e.g. Garden & Outdoor"
+                      disabled={creatingCategory}
+                    />
+                    <span className="form-help">Names are matched without regard to capitalization or repeated spaces, so duplicate categories cannot be added.</span>
+                  </label>
+                </div>
+                {categoryError && <p className="importer-error">{categoryError}</p>}
+                <div className="modal-footer" style={{ padding: '18px 0 0', borderTop: 0 }}>
+                  <button className="btn-dashboard btn-dashboard-primary" type="submit" disabled={creatingCategory || categoryCatalog.loading}>
+                    {creatingCategory ? 'Creating...' : categoryCatalog.loading ? 'Loading categories...' : 'Create category'}
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <section className="dashboard-card" style={{ marginTop: '1.5rem' }}>
+              <header className="dashboard-card-header">
+                <div>
+                  <h2 className="dashboard-card-title">Available categories</h2>
+                  <p className="dashboard-card-subtitle">{managedCategoryNames.length} categories, including built-in and imported product categories</p>
+                </div>
+              </header>
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead><tr><th>Category</th><th>Type</th><th>Products</th><th>Storage</th></tr></thead>
+                  <tbody>
+                    {managedCategoryNames.length ? managedCategoryNames.map((name) => {
+                      const key = productCategoryKey(name);
+                      const record = categoryRecordByKey.get(key);
+                      const productCount = categoryUsage.get(key) || 0;
+                      return (
+                        <tr key={key}>
+                          <td><span className="cell-title">{name}</span></td>
+                          <td>{isDefaultProductCategory(name) ? 'Built-in' : 'Admin or import'}</td>
+                          <td>{productCount}</td>
+                          <td>
+                            {record?.persisted
+                              ? <span className="badge badge-success">Saved</span>
+                              : <span className="badge badge-warning">Fallback</span>}
+                          </td>
+                        </tr>
+                      );
+                    }) : <EmptyRow colSpan={4} title="No categories found" text="Create the first product category above." />}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
+        )}
+
         {section === 'transactions' && (
           <>
             <section className="page-heading">
@@ -249,7 +374,11 @@ export function AdminDashboardPage({ section }: { section: AdminSection }) {
                   <tbody>
                     {store.sales.length ? store.sales.map((sale) => (
                       <tr key={sale.id}>
-                        <td><span className="cell-title">{sale.productName}</span><br /><span className="cell-meta">{sale.seller}</span></td>
+                        <td>
+                          <span className="cell-title">{sale.productName}</span><br />
+                          <span className="cell-meta">{sale.seller}</span><br />
+                          <SelectedProductOptionsSummary selections={sale.selectedOptions} legacyLabel={sale.selectedOptionLabel} legacyValue={sale.selectedOptionValue} />
+                        </td>
                         <td>{sale.broker}</td>
                         <td>{sale.customer}</td>
                         <td>{sale.customerPhone || 'Not added'}</td>

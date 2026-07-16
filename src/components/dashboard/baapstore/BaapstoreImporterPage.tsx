@@ -8,7 +8,7 @@ import { supabase } from '../../../lib/supabase';
 import { DashboardShell } from '../DashboardShell';
 import { PageSkeleton } from '../../ui/PageSkeleton';
 import { ToastRegion } from '../../ui/ToastRegion';
-import { ActivityIcon, BackIcon, GridIcon, PackageIcon, SaleIcon, ShieldIcon, UsersIcon, WalletIcon } from '../../ui/icons';
+import { ActivityIcon, BackIcon, GridIcon, LayersIcon, PackageIcon, SaleIcon, ShieldIcon, UsersIcon, WalletIcon } from '../../ui/icons';
 
 type ImportProduct = {
   id: string;
@@ -34,6 +34,7 @@ type ImportResult = {
   imported: number;
   created: number;
   updated: number;
+  categories: string[];
   products: ImportProduct[];
 };
 
@@ -229,6 +230,11 @@ export function BaapstoreImporterPage() {
                   <SummaryStat label="Imported" value={String(result.imported)} />
                   <SummaryStat label="Created / updated" value={result.dryRun ? 'Preview only' : `${result.created} / ${result.updated}`} />
                 </div>
+                {result.categories.length > 0 && (
+                  <div className="importer-note">
+                    {result.dryRun ? 'Categories detected' : 'Categories available to product forms'}: {result.categories.join(', ')}
+                  </div>
+                )}
                 {result.cappedAtPageLimit && (
                   <div className="importer-note">This listing has {result.totalPages} pages. Increase pages to scan, or run the next batch from a later start page.</div>
                 )}
@@ -281,6 +287,7 @@ const adminNav: [string, string, React.ReactNode][] = [
   ['/admin', 'Overview', <GridIcon key="grid" />],
   ['/admin/activity', 'All activity', <ActivityIcon key="activity" />],
   ['/admin/products', 'All products', <PackageIcon key="package" />],
+  ['/admin/categories', 'Categories', <LayersIcon key="categories" />],
   ['/admin/transactions', 'Transactions', <SaleIcon key="sale" />],
   ['/admin/claims', 'Claims & Payouts', <WalletIcon key="wallet" />],
   ['/profile', 'My profile', <UsersIcon size={18} key="profile" />],

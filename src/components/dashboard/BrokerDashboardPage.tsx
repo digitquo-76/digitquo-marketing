@@ -6,7 +6,12 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { supabase } from '../../lib/supabase';
-import { Product } from '../../types';
+import {
+  areProductSelectionsValid,
+  normalizeProductOptionGroups,
+  normalizeSelectedProductOptions
+} from '../../lib/productOptions';
+import type { Product } from '../../types';
 import { getMonthlyTrend, getProductPerformance } from '../../lib/analytics';
 import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
@@ -15,6 +20,7 @@ import { EmptyRow, Metric, ProductImage, ProductImageCarousel } from './Shared';
 import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
 import { BackIcon, ChartIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, UsersIcon, WalletIcon } from '../ui/icons';
+import { SelectedProductOptionsSummary } from './ProductOptionGroupsEditor';
 
 const OrderModal = dynamic(() => import('./Modals').then((module) => module.OrderModal), { ssr: false });
 
@@ -113,17 +119,25 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
 
   const activeProduct = productId ? store.products.find((p) => p.id === productId) : null;
   const activeProductInStock = Boolean(activeProduct && activeProduct.stock > 0);
+  const activeProductOptionGroups = activeProduct
+    ? normalizeProductOptionGroups(activeProduct.optionGroups, activeProduct.optionLabel, activeProduct.optionValues)
+    : [];
   const relatedProducts = activeProduct ? available.filter(p => p.id !== activeProduct.id && p.category === activeProduct.category).slice(0, 5) : [];
   if (relatedProducts.length < 5 && activeProduct) {
     relatedProducts.push(...available.filter(p => p.id !== activeProduct.id && !relatedProducts.includes(p)).slice(0, 5 - relatedProducts.length));
   }
 
-  const placeOrder = async ({ productId, customer, customerPhone, customerAddress, orderNotes, selectedOptionLabel, selectedOptionValue, quantity }: any) => {
+  const placeOrder = async ({ productId, customer, customerPhone, customerAddress, orderNotes, selectedOptions, selectedOptionLabel, selectedOptionValue, quantity }: any) => {
     const product = store.products.find((p) => p.id === productId);
-    if (!product || !customer || !customerPhone || !customerAddress || quantity < 1 || quantity > product.stock || (product.optionValues.length > 0 && !selectedOptionValue)) {
-      store.showToast('Enter customer details and a valid quantity.', 'error');
+    const optionGroups = product
+      ? normalizeProductOptionGroups(product.optionGroups, product.optionLabel, product.optionValues)
+      : [];
+    const normalizedSelections = normalizeSelectedProductOptions(selectedOptions, selectedOptionLabel, selectedOptionValue);
+    if (!product || !customer || !customerPhone || !customerAddress || quantity < 1 || quantity > product.stock || !areProductSelectionsValid(optionGroups, normalizedSelections)) {
+      store.showToast('Enter customer details, a valid quantity, and one choice from every required group.', 'error');
       return;
     }
+    const firstSelectedOption = normalizedSelections[0];
     
     try {
       setIsPaying(true);
@@ -133,8 +147,9 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
         customerPhone,
         customerAddress,
         orderNotes,
-        selectedOptionLabel,
-        selectedOptionValue,
+        selectedOptions: normalizedSelections,
+        selectedOptionLabel: firstSelectedOption?.label || '',
+        selectedOptionValue: firstSelectedOption?.value || '',
         quantity: Number(quantity)
       };
       const checkoutOrder = await createRazorpayOrder(product.id, Number(quantity));
@@ -394,7 +409,11 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                   <tbody>
                     {sales.length ? sales.map((sale) => (
                       <tr key={sale.id}>
-                        <td><span className="cell-title">{sale.productName}</span><br /><span className="cell-meta">{sale.seller}</span></td>
+                        <td>
+                          <span className="cell-title">{sale.productName}</span><br />
+                          <span className="cell-meta">{sale.seller}</span><br />
+                          <SelectedProductOptionsSummary selections={sale.selectedOptions} legacyLabel={sale.selectedOptionLabel} legacyValue={sale.selectedOptionValue} />
+                        </td>
                         <td>{sale.customer}</td>
                         <td>{sale.customerPhone || 'Not added'}</td>
                         <td>{sale.customerAddress || 'Not added'}</td>
@@ -569,13 +588,17 @@ export function BrokerDashboardPage({ section, productId }: { section: BrokerSec
                     <p>{activeProduct.description || 'No description has been added by the seller yet.'}</p>
                   </div>
 
-                  {activeProduct.optionLabel && activeProduct.optionValues.length ? (
+                  {activeProductOptionGroups.length ? (
                     <div className="product-detail-choice-summary">
-                      <h3>{activeProduct.optionLabel}</h3>
-                      <div className="product-detail-choice-list">
-                        {activeProduct.optionValues.map((value) => <span key={value}>{value}</span>)}
-                      </div>
-                      <p>Select one of these choices when placing the order.</p>
+                      {activeProductOptionGroups.map((group) => (
+                        <div key={group.label} style={{ display: 'grid', gap: '8px' }}>
+                          <h3>{group.label}</h3>
+                          <div className="product-detail-choice-list">
+                            {group.values.map((value) => <span key={value}>{value}</span>)}
+                          </div>
+                        </div>
+                      ))}
+                      <p>Select one choice from every group when placing the order.</p>
                     </div>
                   ) : null}
 

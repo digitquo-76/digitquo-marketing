@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { normalizeProductOptionGroups } from '../../../../lib/productOptions';
+import { normalizeProductCategoryName, productCategoryKey } from '../../../../lib/categories';
+import type { ProductOptionGroup } from '../../../../types';
 
 type ProductRow = {
   id: string;
@@ -14,6 +17,7 @@ type ProductRow = {
   description: string;
   option_label: string;
   option_values: string[];
+  option_groups: ProductOptionGroup[];
 };
 
 type ParsedProduct = {
@@ -25,8 +29,14 @@ type ParsedProduct = {
   description: string;
   baapstorePrice: number;
   avgRetailPrice: number | null;
-  optionLabel: string;
-  optionValues: string[];
+  optionGroups: ProductOptionGroup[];
+};
+
+type ExistingProductChoices = {
+  id: string;
+  option_groups?: unknown;
+  option_label?: string;
+  option_values?: string[];
 };
 
 const TARGET_SELLER_EMAIL = 'ebrahimsekh06s@gmail.com';
@@ -187,10 +197,26 @@ export async function POST(request: NextRequest) {
 
   const uniqueProducts = dedupeProducts(parsedProducts).slice(0, MAX_PRODUCTS_PER_REQUEST);
   const productsWithImages = await enrichProductsWithDetailImages(uniqueProducts);
-  const rows = productsWithImages.map((product) => toProductRow(product, sellerName, stock));
-  const existingIds = await getExistingProductIds(serviceClient, rows.map((row) => row.id));
+  const importedRows = productsWithImages.map((product) => toProductRow(product, sellerName, stock));
+  const existingProducts = await getExistingProducts(serviceClient, importedRows.map((row) => row.id));
+  const rows = importedRows.map((row) => preserveExistingChoices(row, existingProducts.get(row.id)));
+  const existingIds = new Set(existingProducts.keys());
 
   if (!dryRun && rows.length) {
+    const categoryRows = Array.from(new Map(rows.map((row) => {
+      const name = normalizeImportedCategory(row.category);
+      return [productCategoryKey(name), { key: productCategoryKey(name), name, source: 'baapstore' }];
+    })).values());
+    const { error: categoryError } = await serviceClient
+      .from('categories')
+      .upsert(categoryRows, { onConflict: 'key', ignoreDuplicates: true });
+
+    if (categoryError) {
+      return NextResponse.json({
+        error: categoryError.message || 'Could not create the imported product categories.'
+      }, { status: 500 });
+    }
+
     const { error: upsertError } = await serviceClient
       .from('products')
       .upsert(rows, { onConflict: 'id' });
@@ -222,6 +248,7 @@ export async function POST(request: NextRequest) {
     imported: dryRun ? 0 : rows.length,
     created: dryRun ? 0 : created,
     updated: dryRun ? 0 : updated,
+    categories: Array.from(new Set(rows.map((row) => row.category))).sort(),
     products: rows.slice(0, 40).map((row) => ({
       id: row.id,
       name: row.name,
@@ -340,7 +367,9 @@ function collectCookies(response: Response) {
 
 function parseProductsFromHtml(html: string, pageUrl: URL): ParsedProduct[] {
   const region = getBetween(html, '<div class="main-products product-grid">', '<div class="row pagination-results">') || html;
-  const category = limitText(decodeHtml(getMatch(html, /<h1[^>]*>([\s\S]*?)<\/h1>/i) || pageUrl.pathname.split('/').filter(Boolean).pop() || 'Baapstore Products'), 80);
+  const category = normalizeImportedCategory(
+    decodeHtml(getMatch(html, /<h1[^>]*>([\s\S]*?)<\/h1>/i) || pageUrl.pathname.split('/').filter(Boolean).pop() || '')
+  );
   const cardParts = region.split(/<div class="product-layout[^>]*>/i).slice(1);
 
   return cardParts
@@ -371,23 +400,24 @@ function parseProductCard(card: string, category: string, pageUrl: URL): ParsedP
     sourceId,
     sourceUrl: productUrl || pageUrl.toString(),
     name,
-    category,
+    category: normalizeImportedCategory(category),
     images: image ? [image] : [],
     description,
     baapstorePrice,
     avgRetailPrice,
-    optionLabel: '',
-    optionValues: []
+    optionGroups: []
   };
 }
 
 function toProductRow(product: ParsedProduct, seller: string, stock: number): ProductRow {
   const priceParts = calculatePrice(product.baapstorePrice);
+  const optionGroups = normalizeProductOptionGroups(product.optionGroups);
+  const primaryGroup = optionGroups[0];
 
   return {
     id: `baapstore_${product.sourceId}`,
     name: product.name,
-    category: product.category || 'Baapstore Products',
+    category: normalizeImportedCategory(product.category),
     mrp: priceParts.mrp,
     price: priceParts.mrp,
     commission: priceParts.commission,
@@ -395,8 +425,9 @@ function toProductRow(product: ParsedProduct, seller: string, stock: number): Pr
     seller,
     image: serializeProductImages(product.images),
     description: product.description,
-    option_label: product.optionLabel,
-    option_values: product.optionValues
+    option_label: primaryGroup?.label || '',
+    option_values: primaryGroup?.values || [],
+    option_groups: optionGroups
   };
 }
 
@@ -415,12 +446,11 @@ async function enrichProductsWithDetailImages(products: ParsedProduct[]) {
       try {
         const html = await fetchBaapstoreHtml(product.sourceUrl);
         const detailImages = parseDetailImages(html, product.sourceId);
-        const productOption = parseProductOption(html);
+        const productOptions = parseProductOptions(html);
         if (detailImages.length) {
           product.images = mergeProductImages([...detailImages, ...product.images]);
         }
-        product.optionLabel = productOption.label;
-        product.optionValues = productOption.values;
+        product.optionGroups = productOptions;
       } catch {
         product.images = mergeProductImages(product.images);
       }
@@ -431,17 +461,19 @@ async function enrichProductsWithDetailImages(products: ParsedProduct[]) {
   return enriched;
 }
 
-function parseProductOption(html: string) {
+function parseProductOptions(html: string) {
   const selects = Array.from(html.matchAll(/<label[^>]*>([\s\S]*?)<\/label>[\s\S]{0,300}?<select[^>]*>([\s\S]*?)<\/select>/gi));
+  const groups: ProductOptionGroup[] = [];
   for (const match of selects) {
     const label = limitText(cleanProductText(decodeHtml(stripTags(match[1] || ''))).replace(/\s*\*\s*$/, ''), 60);
+    if (!label || /^(quantity|sort|show|currency|language)$/i.test(label)) continue;
     const values = Array.from((match[2] || '').matchAll(/<option[^>]*value=["']([^"']*)["'][^>]*>([\s\S]*?)<\/option>/gi))
       .filter((option) => cleanString(option[1]))
       .map((option) => limitText(cleanProductText(decodeHtml(stripTags(option[2] || ''))), 100))
       .filter(Boolean);
-    if (label && values.length) return { label, values: Array.from(new Set(values)) };
+    if (values.length) groups.push({ label, values });
   }
-  return { label: '', values: [] as string[] };
+  return normalizeProductOptionGroups(groups);
 }
 
 function parseDetailImages(html: string, sourceId: string) {
@@ -554,21 +586,52 @@ function dedupeProducts(products: ParsedProduct[]) {
   return Array.from(seen.values());
 }
 
-async function getExistingProductIds(serviceClient: any, ids: string[]) {
-  if (!ids.length) return new Set<string>();
-
-  const found = new Set<string>();
+async function getExistingProducts(serviceClient: any, ids: string[]) {
+  const found = new Map<string, ExistingProductChoices>();
+  if (!ids.length) return found;
 
   for (let index = 0; index < ids.length; index += 200) {
-    const { data } = await serviceClient
+    let result = await serviceClient
       .from('products')
-      .select('id')
+      .select('id,option_groups,option_label,option_values')
       .in('id', ids.slice(index, index + 200));
 
-    (data || []).forEach((row: { id: string }) => found.add(row.id));
+    if (result.error && isMissingDatabaseColumn(result.error, 'option_groups')) {
+      result = await serviceClient
+        .from('products')
+        .select('id,option_label,option_values')
+        .in('id', ids.slice(index, index + 200));
+    }
+
+    if (result.error) throw new Error(result.error.message || 'Could not check existing imported products.');
+    (result.data || []).forEach((row: ExistingProductChoices) => found.set(row.id, row));
   }
 
   return found;
+}
+
+function preserveExistingChoices(row: ProductRow, existing?: ExistingProductChoices) {
+  if (row.option_groups.length || !existing) return row;
+
+  const optionGroups = normalizeProductOptionGroups(
+    existing.option_groups,
+    existing.option_label,
+    existing.option_values
+  );
+  if (!optionGroups.length) return row;
+
+  return {
+    ...row,
+    option_groups: optionGroups,
+    option_label: optionGroups[0].label,
+    option_values: optionGroups[0].values
+  };
+}
+
+function isMissingDatabaseColumn(error: { code?: string; message?: string; details?: string }, column: string) {
+  const code = String(error.code || '').toUpperCase();
+  const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+  return (code === '42703' || code === 'PGRST204') && message.includes(column.toLowerCase());
 }
 
 function parseFirstPrice(card: string) {
@@ -625,10 +688,19 @@ function cleanString(value: unknown) {
   return String(value || '').trim();
 }
 
+function normalizeImportedCategory(value: unknown) {
+  const rawName = normalizeProductCategoryName(value);
+  const name = /^[a-z0-9]+(?:[-_][a-z0-9]+)+$/.test(rawName)
+    ? rawName.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : rawName;
+  const usableName = name && !/^(product|products)$/i.test(name) ? name : 'Baapstore Products';
+  return limitText(usableName, 80);
+}
+
 function limitText(value: string, maxLength: number) {
   const clean = cleanString(value);
   if (clean.length <= maxLength) return clean;
-  return `${clean.slice(0, Math.max(0, maxLength - 1)).trim()}...`;
+  return `${clean.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 }
 
 function clampInteger(value: number, min: number, max: number) {

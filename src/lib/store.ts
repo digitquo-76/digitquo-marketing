@@ -7,12 +7,18 @@ import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { cacheUserProfile, clearCachedUserProfile, ensureUserProfile } from './profile';
 import { getProductImages, serializeProductImages } from './utils';
+import { normalizeProductOptionGroups, normalizeSelectedProductOptions } from './productOptions';
+import type { SelectedProductOption } from '../types';
 
-const PRODUCT_COLUMNS = 'id,name,category,mrp,price,commission,stock,seller,image,description,option_label,option_values,created_at';
-const PRODUCT_COLUMNS_WITHOUT_IMAGES = 'id,name,category,mrp,price,commission,stock,seller,description,option_label,option_values,created_at';
-const LEGACY_PRODUCT_COLUMNS = 'id,name,category,mrp,price,commission,stock,seller,image,description,created_at';
-const LEGACY_PRODUCT_COLUMNS_WITHOUT_IMAGES = 'id,name,category,mrp,price,commission,stock,seller,description,created_at';
-const SALE_COLUMNS = 'id,product_id,product_name,seller,customer,customer_phone,customer_address,order_notes,selected_option_label,selected_option_value,quantity,unit_price,total,points,broker,razorpay_order_id,razorpay_payment_id,created_at';
+const PRODUCT_COLUMNS = 'id,name,category,mrp,price,commission,stock,seller,image,description,option_groups,option_label,option_values,created_at';
+const PRODUCT_COLUMNS_WITHOUT_IMAGES = 'id,name,category,mrp,price,commission,stock,seller,description,option_groups,option_label,option_values,created_at';
+const LEGACY_OPTION_PRODUCT_COLUMNS = 'id,name,category,mrp,price,commission,stock,seller,image,description,option_label,option_values,created_at';
+const LEGACY_OPTION_PRODUCT_COLUMNS_WITHOUT_IMAGES = 'id,name,category,mrp,price,commission,stock,seller,description,option_label,option_values,created_at';
+const NO_OPTION_PRODUCT_COLUMNS = 'id,name,category,mrp,price,commission,stock,seller,image,description,created_at';
+const NO_OPTION_PRODUCT_COLUMNS_WITHOUT_IMAGES = 'id,name,category,mrp,price,commission,stock,seller,description,created_at';
+const SALE_COLUMNS = 'id,product_id,product_name,seller,customer,customer_phone,customer_address,order_notes,selected_options,selected_option_label,selected_option_value,quantity,unit_price,total,points,broker,razorpay_order_id,razorpay_payment_id,created_at';
+const LEGACY_OPTION_SALE_COLUMNS = 'id,product_id,product_name,seller,customer,customer_phone,customer_address,order_notes,selected_option_label,selected_option_value,quantity,unit_price,total,points,broker,razorpay_order_id,razorpay_payment_id,created_at';
+const NO_OPTION_SALE_COLUMNS = 'id,product_id,product_name,seller,customer,customer_phone,customer_address,order_notes,quantity,unit_price,total,points,broker,razorpay_order_id,razorpay_payment_id,created_at';
 const CLAIM_COLUMNS = 'id,broker,points,payout_account_name,payout_bank_name,payout_account_number,payout_ifsc,payout_upi,status,created_at';
 const ACTIVITY_COLUMNS = 'id,type,message,created_at';
 const PRODUCT_IMAGE_BUCKET = 'product-images';
@@ -57,8 +63,9 @@ type PlaceOrderInput = {
   customerPhone: string;
   customerAddress: string;
   orderNotes: string;
-  selectedOptionLabel: string;
-  selectedOptionValue: string;
+  selectedOptions?: SelectedProductOption[];
+  selectedOptionLabel?: string;
+  selectedOptionValue?: string;
   quantity: number;
 };
 
@@ -124,24 +131,35 @@ function loadProductsResource(userId: string, imageMode: ProductImageMode, activ
   }
   return cachedResource<Product>(key, async () => {
     const includeAllImages = imageMode === 'all';
-    const loadProductRows = (legacy = false) => supabase
+    const loadProductRows = (optionSchema: 'json' | 'legacy' | 'none') => supabase
       .from('products')
-      .select(legacy
-        ? includeAllImages ? LEGACY_PRODUCT_COLUMNS : LEGACY_PRODUCT_COLUMNS_WITHOUT_IMAGES
-        : includeAllImages ? PRODUCT_COLUMNS : PRODUCT_COLUMNS_WITHOUT_IMAGES)
+      .select(optionSchema === 'json'
+        ? includeAllImages ? PRODUCT_COLUMNS : PRODUCT_COLUMNS_WITHOUT_IMAGES
+        : optionSchema === 'legacy'
+          ? includeAllImages ? LEGACY_OPTION_PRODUCT_COLUMNS : LEGACY_OPTION_PRODUCT_COLUMNS_WITHOUT_IMAGES
+          : includeAllImages ? NO_OPTION_PRODUCT_COLUMNS : NO_OPTION_PRODUCT_COLUMNS_WITHOUT_IMAGES)
       .order('created_at', { ascending: false });
 
+    const loadProductRowsWithFallback = async () => {
+      let result = await loadProductRows('json');
+      if (result.error && isMissingProductOptionSchema(result.error)) {
+        result = await loadProductRows('legacy');
+      }
+      if (result.error && isMissingProductOptionSchema(result.error)) {
+        result = await loadProductRows('none');
+      }
+      return result;
+    };
+
     if (imageMode !== 'active' || !activeProductId) {
-      let result = await loadProductRows();
-      if (result.error && isMissingProductOptionSchema(result.error)) result = await loadProductRows(true);
+      const result = await loadProductRowsWithFallback();
       return { data: (result.data || []).map(mapProductFromDB), error: result.error };
     }
 
-    let [productsResult, imageResult] = await Promise.all([
-      loadProductRows(),
+    const [productsResult, imageResult] = await Promise.all([
+      loadProductRowsWithFallback(),
       supabase.from('products').select('id,image').eq('id', activeProductId).maybeSingle()
     ]);
-    if (productsResult.error && isMissingProductOptionSchema(productsResult.error)) productsResult = await loadProductRows(true);
     const activeImage = imageResult.data?.image || '';
     const products = (productsResult.data || []).map((row: any) => mapProductFromDB({
       ...row,
@@ -153,7 +171,14 @@ function loadProductsResource(userId: string, imageMode: ProductImageMode, activ
 
 function loadSalesResource(userId: string) {
   return cachedResource<Sale>(`${userId}:sales`, async () => {
-    const result = await supabase.from('sales').select(SALE_COLUMNS).order('created_at', { ascending: false });
+    const loadSaleRows = (columns: string) => supabase.from('sales').select(columns).order('created_at', { ascending: false });
+    let result = await loadSaleRows(SALE_COLUMNS);
+    if (result.error && isMissingSaleOptionSchema(result.error)) {
+      result = await loadSaleRows(LEGACY_OPTION_SALE_COLUMNS);
+    }
+    if (result.error && isMissingSaleOptionSchema(result.error)) {
+      result = await loadSaleRows(NO_OPTION_SALE_COLUMNS);
+    }
     return { data: (result.data || []).map(mapSaleFromDB), error: result.error };
   });
 }
@@ -322,13 +347,21 @@ export function useDigitQuoStore({
       createdAt: new Date().toISOString()
     };
     setProductsState(prev => [newProduct, ...prev]);
-    let { error } = await supabase.from('products').insert(mapProductToDB(newProduct));
+    const optionGroups = normalizeProductOptionGroups(newProduct.optionGroups, newProduct.optionLabel, newProduct.optionValues);
+    let { error } = await supabase.from('products').insert(mapProductToDB(newProduct, 'json'));
     if (error && isMissingProductOptionSchema(error)) {
-      if (hasProductOptions(newProduct)) {
+      if (optionGroups.length > 1) {
         setProductsState(prev => prev.filter(p => p.id !== newProduct.id));
         throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
       }
-      ({ error } = await supabase.from('products').insert(mapProductToDB(newProduct, false)));
+      ({ error } = await supabase.from('products').insert(mapProductToDB(newProduct, 'legacy')));
+      if (error && isMissingProductOptionSchema(error)) {
+        if (optionGroups.length) {
+          setProductsState(prev => prev.filter(p => p.id !== newProduct.id));
+          throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
+        }
+        ({ error } = await supabase.from('products').insert(mapProductToDB(newProduct, 'none')));
+      }
     }
     if (error) {
       setProductsState(prev => prev.filter(p => p.id !== newProduct.id));
@@ -343,13 +376,21 @@ export function useDigitQuoStore({
       : product;
     const previous = products;
     setProductsState(prev => prev.map(p => p.id === storedProduct.id ? storedProduct : p));
-    let { error } = await supabase.from('products').update(mapProductToDB(storedProduct)).eq('id', storedProduct.id);
+    const optionGroups = normalizeProductOptionGroups(storedProduct.optionGroups, storedProduct.optionLabel, storedProduct.optionValues);
+    let { error } = await supabase.from('products').update(mapProductToDB(storedProduct, 'json')).eq('id', storedProduct.id);
     if (error && isMissingProductOptionSchema(error)) {
-      if (hasProductOptions(storedProduct)) {
+      if (optionGroups.length > 1) {
         setProductsState(previous);
         throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
       }
-      ({ error } = await supabase.from('products').update(mapProductToDB(storedProduct, false)).eq('id', storedProduct.id));
+      ({ error } = await supabase.from('products').update(mapProductToDB(storedProduct, 'legacy')).eq('id', storedProduct.id));
+      if (error && isMissingProductOptionSchema(error)) {
+        if (optionGroups.length) {
+          setProductsState(previous);
+          throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
+        }
+        ({ error } = await supabase.from('products').update(mapProductToDB(storedProduct, 'none')).eq('id', storedProduct.id));
+      }
     }
     if (error) {
       setProductsState(previous);
@@ -376,7 +417,22 @@ export function useDigitQuoStore({
       createdAt: new Date().toISOString()
     };
     setSalesState(prev => [newSale, ...prev]);
-    const { error } = await supabase.from('sales').insert(mapSaleToDB(newSale));
+    const selectedOptions = normalizeSelectedProductOptions(newSale.selectedOptions, newSale.selectedOptionLabel, newSale.selectedOptionValue);
+    let { error } = await supabase.from('sales').insert(mapSaleToDB(newSale, 'json'));
+    if (error && isMissingSaleOptionSchema(error)) {
+      if (selectedOptions.length > 1) {
+        setSalesState(prev => prev.filter(s => s.id !== newSale.id));
+        throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
+      }
+      ({ error } = await supabase.from('sales').insert(mapSaleToDB(newSale, 'legacy')));
+      if (error && isMissingSaleOptionSchema(error)) {
+        if (selectedOptions.length) {
+          setSalesState(prev => prev.filter(s => s.id !== newSale.id));
+          throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
+        }
+        ({ error } = await supabase.from('sales').insert(mapSaleToDB(newSale, 'none')));
+      }
+    }
     if (error) {
       setSalesState(prev => prev.filter(s => s.id !== newSale.id));
       throw error;
@@ -385,6 +441,9 @@ export function useDigitQuoStore({
   };
 
   const placeOrder = async (order: PlaceOrderInput) => {
+    const selectedOptions = normalizeSelectedProductOptions(order.selectedOptions, order.selectedOptionLabel, order.selectedOptionValue);
+    if (selectedOptions.length > 1) throw new Error('Multiple product choices require the paid checkout flow.');
+    const firstSelection = selectedOptions[0];
     const { data, error } = await supabase.rpc('place_order', {
       p_order_id: `ord_${Date.now()}_${Math.random().toString(16).slice(2)}`,
       p_product_id: order.productId,
@@ -392,8 +451,8 @@ export function useDigitQuoStore({
       p_customer_phone: order.customerPhone,
       p_customer_address: order.customerAddress,
       p_order_notes: order.orderNotes,
-      p_selected_option_label: order.selectedOptionLabel,
-      p_selected_option_value: order.selectedOptionValue,
+      p_selected_option_label: firstSelection?.label || '',
+      p_selected_option_value: firstSelection?.value || '',
       p_quantity: order.quantity
     });
 
@@ -433,13 +492,23 @@ export function useDigitQuoStore({
       throw new Error('You need to be signed in to complete payment.');
     }
 
+    const selectedOptions = normalizeSelectedProductOptions(order.selectedOptions, order.selectedOptionLabel, order.selectedOptionValue);
+    const firstSelection = selectedOptions[0];
     const response = await fetch('/api/payments/verify-and-place-order', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ order, payment })
+      body: JSON.stringify({
+        order: {
+          ...order,
+          selectedOptions,
+          selectedOptionLabel: firstSelection?.label || '',
+          selectedOptionValue: firstSelection?.value || ''
+        },
+        payment
+      })
     });
 
     const result = await response.json().catch(() => null);
@@ -538,7 +607,9 @@ export function useDigitQuoStore({
 }
 
 // Mapping helpers to align TypeScript frontend with Postgres snake_case tables
-function mapProductToDB(p: Product, includeOptions = true) {
+function mapProductToDB(p: Product, optionSchema: 'json' | 'legacy' | 'none' = 'json') {
+  const optionGroups = normalizeProductOptionGroups(p.optionGroups, p.optionLabel, p.optionValues);
+  const firstGroup = optionGroups[0];
   const row: Record<string, unknown> = {
     id: p.id,
     name: p.name,
@@ -552,28 +623,36 @@ function mapProductToDB(p: Product, includeOptions = true) {
     description: p.description,
     created_at: p.createdAt
   };
-  if (includeOptions) {
-    row.option_label = p.optionLabel || '';
-    row.option_values = p.optionValues || [];
+  if (optionSchema === 'json') {
+    row.option_groups = optionGroups;
+  }
+  if (optionSchema !== 'none') {
+    row.option_label = firstGroup?.label || '';
+    row.option_values = firstGroup?.values || [];
   }
   return row;
 }
 
 const PRODUCT_OPTIONS_MIGRATION_MESSAGE = 'Product choices are not enabled in Supabase yet. Run the latest database.sql in the Supabase SQL Editor, then try again.';
 
-function hasProductOptions(product: Product) {
-  return Boolean(product.optionLabel?.trim() || product.optionValues?.length);
-}
-
 function isMissingProductOptionSchema(error: any) {
   const message = String(error?.message || error?.details || '').toLowerCase();
   return ['42703', 'pgrst204'].includes(String(error?.code || '').toLowerCase())
-    && (message.includes('option_label') || message.includes('option_values'));
+    && (message.includes('option_groups') || message.includes('option_label') || message.includes('option_values'));
 }
+
+function isMissingSaleOptionSchema(error: any) {
+  const message = String(error?.message || error?.details || '').toLowerCase();
+  return ['42703', 'pgrst204'].includes(String(error?.code || '').toLowerCase())
+    && (message.includes('selected_options') || message.includes('selected_option_label') || message.includes('selected_option_value'));
+}
+
 function mapProductFromDB(p: any): Product {
   const mrp = Number(p.mrp ?? p.price ?? 0);
   const legacySellingPrice = Number(p.price ?? mrp);
   const commission = Number(p.commission ?? Math.max(0, mrp - legacySellingPrice));
+  const optionGroups = normalizeProductOptionGroups(p.option_groups, p.option_label, p.option_values);
+  const firstGroup = optionGroups[0];
 
   return {
     id: p.id,
@@ -585,14 +664,17 @@ function mapProductFromDB(p: any): Product {
     seller: p.seller,
     image: p.image,
     description: p.description,
-    optionLabel: p.option_label || '',
-    optionValues: Array.isArray(p.option_values) ? p.option_values : [],
+    optionGroups,
+    optionLabel: firstGroup?.label || '',
+    optionValues: firstGroup?.values || [],
     createdAt: p.created_at
   };
 }
 
-function mapSaleToDB(s: Sale) {
-  return {
+function mapSaleToDB(s: Sale, optionSchema: 'json' | 'legacy' | 'none' = 'json') {
+  const selectedOptions = normalizeSelectedProductOptions(s.selectedOptions, s.selectedOptionLabel, s.selectedOptionValue);
+  const firstSelection = selectedOptions[0];
+  const row: Record<string, unknown> = {
     id: s.id,
     product_id: s.productId,
     product_name: s.productName,
@@ -601,8 +683,6 @@ function mapSaleToDB(s: Sale) {
     customer_phone: s.customerPhone,
     customer_address: s.customerAddress,
     order_notes: s.orderNotes,
-    selected_option_label: s.selectedOptionLabel || '',
-    selected_option_value: s.selectedOptionValue || '',
     quantity: s.quantity,
     unit_price: s.unitPrice,
     total: s.total,
@@ -612,8 +692,18 @@ function mapSaleToDB(s: Sale) {
     razorpay_payment_id: s.razorpayPaymentId || null,
     created_at: s.createdAt
   };
+  if (optionSchema === 'json') {
+    row.selected_options = selectedOptions;
+  }
+  if (optionSchema !== 'none') {
+    row.selected_option_label = firstSelection?.label || '';
+    row.selected_option_value = firstSelection?.value || '';
+  }
+  return row;
 }
 function mapSaleFromDB(s: any): Sale {
+  const selectedOptions = normalizeSelectedProductOptions(s.selected_options, s.selected_option_label, s.selected_option_value);
+  const firstSelection = selectedOptions[0];
   return {
     id: s.id,
     productId: s.product_id,
@@ -623,8 +713,9 @@ function mapSaleFromDB(s: any): Sale {
     customerPhone: s.customer_phone || '',
     customerAddress: s.customer_address || '',
     orderNotes: s.order_notes || '',
-    selectedOptionLabel: s.selected_option_label || '',
-    selectedOptionValue: s.selected_option_value || '',
+    selectedOptions,
+    selectedOptionLabel: firstSelection?.label || '',
+    selectedOptionValue: firstSelection?.value || '',
     quantity: s.quantity,
     unitPrice: s.unit_price,
     total: s.total,

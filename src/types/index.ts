@@ -1,3 +1,13 @@
+export interface ProductOptionGroup {
+  label: string;
+  values: string[];
+}
+
+export interface SelectedProductOption {
+  label: string;
+  value: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -8,7 +18,10 @@ export interface Product {
   seller: string;
   image: string;
   description: string;
+  optionGroups: ProductOptionGroup[];
+  /** @deprecated Kept as the first choice group for older database deployments. */
   optionLabel: string;
+  /** @deprecated Kept as the first choice group for older database deployments. */
   optionValues: string[];
   createdAt: string;
 }
@@ -22,7 +35,10 @@ export interface Sale {
   customerPhone: string;
   customerAddress: string;
   orderNotes: string;
+  selectedOptions: SelectedProductOption[];
+  /** @deprecated Kept as the first selection for older order records. */
   selectedOptionLabel: string;
+  /** @deprecated Kept as the first selection for older order records. */
   selectedOptionValue: string;
   quantity: number;
   unitPrice: number;

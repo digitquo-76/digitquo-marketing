@@ -5,16 +5,25 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
-import { Product } from '../../types';
+import { normalizeProductOptionGroups, optionGroupsEqual } from '../../lib/productOptions';
+import { mergeProductCategoryNames } from '../../lib/categories';
+import { useProductCategories } from '../../lib/useProductCategories';
+import type { Product, ProductOptionGroup } from '../../types';
 import { getMonthlyTrend, getProductPerformance } from '../../lib/analytics';
 import { formatCurrency, formatDate, isProfileComplete, routeForProfile } from '../../lib/utils';
 import { DashboardShell } from './DashboardShell';
 import { AnalyticsBarChart, AnalyticsRanking } from './Analytics';
 import { EmptyRow, Metric, ProductCell, ProductImageCarousel, StockBadge } from './Shared';
-import { PRODUCT_CATEGORIES } from './productCategories';
 import { PageSkeleton } from '../ui/PageSkeleton';
 import { ToastRegion } from '../ui/ToastRegion';
 import { BackIcon, ChartIcon, EditIcon, GridIcon, PackageIcon, SaleIcon, SearchIcon, TrashIcon, UsersIcon } from '../ui/icons';
+import {
+  createProductOptionGroupDrafts,
+  parseProductOptionGroupDrafts,
+  ProductOptionGroupsEditor,
+  SelectedProductOptionsSummary,
+  type ProductOptionGroupDraft
+} from './ProductOptionGroupsEditor';
 
 const ProductModal = dynamic(() => import('./Modals').then((module) => module.ProductModal), { ssr: false });
 
@@ -27,6 +36,7 @@ type ProductSaveValues = {
   stock: number;
   image?: string;
   description: string;
+  optionGroups?: ProductOptionGroup[];
   optionLabel?: string;
   optionValues?: string[];
 };
@@ -44,6 +54,7 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
   const [stockFilter, setStockFilter] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const categoryCatalog = useProductCategories({ enabled: Boolean(store.user) && (modalOpen || section === 'product') });
 
   useEffect(() => {
     if (store.loading) return;
@@ -64,6 +75,10 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
 
   const currentSeller = store.currentSellerName;
   const myProducts = store.products.filter((product) => product.seller === currentSeller);
+  const categoryOptions = mergeProductCategoryNames(
+    categoryCatalog.categories.map((category) => category.name),
+    myProducts.map((product) => product.category)
+  );
   const myProductIds = new Set(myProducts.map((product) => product.id));
   const mySales = store.sales.filter((sale) => myProductIds.has(sale.productId) || sale.seller === currentSeller);
   const productCategories = Array.from(new Set(myProducts.map((product) => product.category))).sort();
@@ -113,6 +128,7 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
         stock: Number(values.stock),
         image: values.image ?? product.image,
         description: values.description || '',
+        optionGroups: values.optionGroups || [],
         optionLabel: values.optionLabel || '',
         optionValues: values.optionValues || []
       });
@@ -127,11 +143,7 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
 
   const saveProduct = async (values: ProductSaveValues) => {
     if (editing) {
-      const saved = await updateExistingProduct(editing, values);
-      if (saved) {
-        setModalOpen(false);
-        setEditing(null);
-      }
+      await updateExistingProduct(editing, values);
       return;
     }
 
@@ -145,11 +157,10 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
         seller: currentSeller,
         image: values.image || '',
         description: values.description || '',
+        optionGroups: values.optionGroups || [],
         optionLabel: values.optionLabel || '',
         optionValues: values.optionValues || []
       });
-      setModalOpen(false);
-      setEditing(null);
       store.showToast('Product is now available to brokers.', 'success');
 
       try {
@@ -361,7 +372,11 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
                   <tbody>
                     {mySales.length ? mySales.map((order) => (
                       <tr key={order.id}>
-                        <td><span className="cell-title">{order.productName}</span><br /><span className="cell-meta">{order.id}</span></td>
+                        <td>
+                          <span className="cell-title">{order.productName}</span><br />
+                          <span className="cell-meta">{order.id}</span><br />
+                          <SelectedProductOptionsSummary selections={order.selectedOptions} legacyLabel={order.selectedOptionLabel} legacyValue={order.selectedOptionValue} />
+                        </td>
                         <td>{order.broker}</td>
                         <td>{order.customer}</td>
                         <td>{order.customerPhone || 'Not added'}</td>
@@ -453,6 +468,7 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
                 <div className="product-detail-info">
                   <SellerProductDetailForm
                     product={activeProduct}
+                    categories={categoryOptions}
                     onSave={(values) => updateExistingProduct(activeProduct, values)}
                     onManagePhotos={() => { setEditing(activeProduct); setModalOpen(true); }}
                     showToast={store.showToast}
@@ -477,17 +493,18 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
                 </header>
                 <div className="table-wrap">
                   <table className="data-table">
-                    <thead><tr><th>Broker</th><th>Customer</th><th>Quantity</th><th>Total</th><th>Date</th></tr></thead>
+                    <thead><tr><th>Broker</th><th>Customer</th><th>Choices</th><th>Quantity</th><th>Total</th><th>Date</th></tr></thead>
                     <tbody>
                       {activeProductSales.length ? activeProductSales.slice(0, 6).map((order) => (
                         <tr key={order.id}>
                           <td>{order.broker}</td>
                           <td><span className="cell-title">{order.customer}</span><br /><span className="cell-meta">{order.customerPhone || 'No phone added'}</span></td>
+                          <td><SelectedProductOptionsSummary selections={order.selectedOptions} legacyLabel={order.selectedOptionLabel} legacyValue={order.selectedOptionValue} /></td>
                           <td>{order.quantity}</td>
                           <td>{formatCurrency(order.total)}</td>
                           <td>{formatDate(order.createdAt)}</td>
                         </tr>
-                      )) : <EmptyRow colSpan={5} title="No orders yet" text="Broker orders for this product will appear here." />}
+                      )) : <EmptyRow colSpan={6} title="No orders yet" text="Broker orders for this product will appear here." />}
                     </tbody>
                   </table>
                 </div>
@@ -502,7 +519,7 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
           )
         )}
       </DashboardShell>
-      {modalOpen && <ProductModal open product={editing} onClose={() => { setModalOpen(false); setEditing(null); }} onSave={saveProduct} showToast={store.showToast} />}
+      {modalOpen && <ProductModal open product={editing} categories={categoryOptions} onClose={() => { setModalOpen(false); setEditing(null); }} onSave={saveProduct} showToast={store.showToast} />}
       <ToastRegion toasts={store.toasts} />
     </>
   );
@@ -510,11 +527,13 @@ export function SellerDashboardPage({ section, productId }: { section: SellerSec
 
 function SellerProductDetailForm({
   product,
+  categories,
   onSave,
   onManagePhotos,
   showToast
 }: {
   product: Product;
+  categories: string[];
   onSave: (values: ProductSaveValues) => Promise<boolean>;
   onManagePhotos: () => void;
   showToast: (message: string, type?: 'success' | 'error' | '') => void;
@@ -526,9 +545,18 @@ function SellerProductDetailForm({
     setValues(productToDetailForm(product));
   }, [product]);
 
-  const update = (key: keyof ReturnType<typeof productToDetailForm>, value: string) => {
-    setValues((current) => ({ ...current, [key]: value }));
+  const update = (key: keyof ReturnType<typeof productToDetailForm>, value: string | ProductOptionGroupDraft[]) => {
+    setValues((current) => ({ ...current, [key]: value } as typeof current));
   };
+
+  const parsedOptionGroups = parseProductOptionGroupDrafts(values.optionGroups);
+  const originalOptionGroups = createProductOptionGroupDrafts(product.optionGroups, product.optionLabel, product.optionValues);
+  const optionGroupsDirty = parsedOptionGroups.error
+    ? JSON.stringify(values.optionGroups) !== JSON.stringify(originalOptionGroups)
+    : !optionGroupsEqual(
+        parsedOptionGroups.groups,
+        normalizeProductOptionGroups(product.optionGroups, product.optionLabel, product.optionValues)
+      );
 
   const isDirty =
     values.name !== product.name ||
@@ -537,13 +565,19 @@ function SellerProductDetailForm({
     Number(values.commission) !== Number(product.commission) ||
     Number(values.stock) !== Number(product.stock) ||
     values.description !== (product.description || '') ||
-    values.optionLabel !== (product.optionLabel || '') ||
-    values.optionValues !== (product.optionValues || []).join(', ');
+    optionGroupsDirty;
 
   const reset = () => setValues(productToDetailForm(product));
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    const parsedGroups = parseProductOptionGroupDrafts(values.optionGroups);
+    if (parsedGroups.error) {
+      showToast(parsedGroups.error, 'error');
+      return;
+    }
+    const firstOptionGroup = parsedGroups.groups[0];
 
     const cleaned: ProductSaveValues = {
       name: values.name.trim(),
@@ -552,8 +586,9 @@ function SellerProductDetailForm({
       commission: Number(values.commission),
       stock: Number(values.stock),
       description: values.description.trim(),
-      optionLabel: values.optionLabel.trim(),
-      optionValues: values.optionValues.split(/[,\n]/).map((value) => value.trim()).filter(Boolean)
+      optionGroups: parsedGroups.groups,
+      optionLabel: firstOptionGroup?.label || '',
+      optionValues: firstOptionGroup?.values || []
     };
 
     if (!cleaned.name || !cleaned.category || cleaned.mrp <= 0 || cleaned.commission < 0 || cleaned.stock < 0) {
@@ -564,11 +599,6 @@ function SellerProductDetailForm({
       showToast('Commission cannot be higher than MRP.', 'error');
       return;
     }
-    if ((cleaned.optionLabel && !cleaned.optionValues?.length) || (!cleaned.optionLabel && cleaned.optionValues?.length)) {
-      showToast('Add both a choice name and at least one available choice, or leave both blank.', 'error');
-      return;
-    }
-
     setSaving(true);
     try {
       await onSave(cleaned);
@@ -587,7 +617,7 @@ function SellerProductDetailForm({
           <span className="form-label">Category *</span>
           <select className="form-control" value={values.category} onChange={(event) => update('category', event.target.value)} required>
             <option value="">Choose category</option>
-            {PRODUCT_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+            {mergeProductCategoryNames(categories, [product.category]).map((category) => <option key={category}>{category}</option>)}
           </select>
         </label>
         <span>Product ID {product.id.slice(-8).toUpperCase()}</span>
@@ -624,17 +654,7 @@ function SellerProductDetailForm({
         <textarea value={values.description} onChange={(event) => update('description', event.target.value)} maxLength={300} placeholder="Add useful product details for brokers" />
       </label>
 
-      <div className="seller-product-choice-editor">
-        <label className="form-group">
-          <span className="form-label">Choice name (optional)</span>
-          <input className="form-control" value={values.optionLabel} onChange={(event) => update('optionLabel', event.target.value)} maxLength={60} placeholder="Size or Mobile model" />
-        </label>
-        <label className="form-group">
-          <span className="form-label">Available choices (optional)</span>
-          <textarea className="form-control" value={values.optionValues} onChange={(event) => update('optionValues', event.target.value)} maxLength={500} placeholder="S, M, L, XL" />
-          <span className="form-help">Leave both fields blank if choices are not needed. Separate choices with commas or new lines.</span>
-        </label>
-      </div>
+      <ProductOptionGroupsEditor groups={values.optionGroups} onChange={(optionGroups) => update('optionGroups', optionGroups)} disabled={saving} />
 
       <div className="seller-product-edit-actions">
         <button className="btn-dashboard btn-dashboard-secondary" type="button" onClick={onManagePhotos}><EditIcon /> Edit photos</button>
@@ -653,7 +673,6 @@ function productToDetailForm(product: Product) {
     commission: String(product.commission ?? ''),
     stock: String(product.stock ?? ''),
     description: product.description || '',
-    optionLabel: product.optionLabel || '',
-    optionValues: (product.optionValues || []).join(', ')
+    optionGroups: createProductOptionGroupDrafts(product.optionGroups, product.optionLabel, product.optionValues)
   };
 }

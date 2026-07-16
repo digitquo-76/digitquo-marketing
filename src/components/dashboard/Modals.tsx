@@ -2,22 +2,42 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { formatCurrency, getProductImages, serializeProductImages } from '../../lib/utils';
+import {
+  areProductSelectionsValid,
+  normalizeProductOptionGroups,
+  normalizeSelectedProductOptions
+} from '../../lib/productOptions';
 import { PRODUCT_CATEGORIES } from './productCategories';
+import {
+  createProductOptionGroupDrafts,
+  parseProductOptionGroupDrafts,
+  ProductOptionGroupsEditor
+} from './ProductOptionGroupsEditor';
 
 const PRODUCT_IMAGE_MAX_SIZE_MB = 20;
 const PRODUCT_IMAGE_MAX_DIMENSION = 1600;
 const PRODUCT_IMAGE_TARGET_SIZE = 1.25 * 1024 * 1024;
 const ORDER_SHIPPING_CHARGE = 50;
 
-export function ProductModal({ open, product, onClose, onSave, showToast }: any) {
+type ProductModalProps = {
+  open: boolean;
+  product?: any;
+  onClose: () => void;
+  onSave: (values: any) => Promise<unknown> | unknown;
+  showToast: (message: string, type?: 'success' | 'error' | '') => void;
+  categories?: string[];
+};
+
+export function ProductModal({ open, product, onClose, onSave, showToast, categories }: ProductModalProps) {
   const initial = useMemo(
     () => product
       ? {
           ...product,
           mrp: product.mrp ?? product.price,
-          commission: product.commission ?? Math.max(0, Number(product.mrp || 0) - Number(product.price || 0))
+          commission: product.commission ?? Math.max(0, Number(product.mrp || 0) - Number(product.price || 0)),
+          optionGroups: createProductOptionGroupDrafts(product.optionGroups, product.optionLabel, product.optionValues)
         }
-      : { name: '', category: '', mrp: '', commission: '', stock: '', image: '', description: '', optionLabel: '', optionValues: [] },
+      : { name: '', category: '', mrp: '', commission: '', stock: '', image: '', description: '', optionGroups: [] },
     [product]
   );
   const [values, setValues] = useState(initial);
@@ -32,9 +52,13 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
 
   if (!open) return null;
 
-  const update = (key: string, value: string) => setValues((current: any) => ({ ...current, [key]: value }));
+  const update = (key: string, value: unknown) => setValues((current: any) => ({ ...current, [key]: value }));
   const images = useMemo(() => getProductImages(String(values.image || '')), [values.image]);
   const setImages = (nextImages: string[]) => update('image', serializeProductImages(nextImages));
+  const categoryOptions = Array.from(new Set([
+    ...(Array.isArray(categories) && categories.length ? categories : PRODUCT_CATEGORIES),
+    String(values.category || '').trim()
+  ].map((category) => String(category || '').trim()).filter(Boolean)));
 
   const updateImageFiles = (files?: FileList | null) => {
     const selected = Array.from(files || []);
@@ -59,9 +83,15 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       .catch(() => showToast('Could not optimize one of those images. Try another file.', 'error'));
   };
 
-  const submit = async (event: React.FormEvent) => {
+  const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (isSaving) return;
+    const parsedOptionGroups = parseProductOptionGroupDrafts(Array.isArray(values.optionGroups) ? values.optionGroups : []);
+    if (parsedOptionGroups.error) {
+      showToast(parsedOptionGroups.error, 'error');
+      return;
+    }
+    const firstOptionGroup = parsedOptionGroups.groups[0];
     const cleaned = {
       name: String(values.name || '').trim(),
       category: String(values.category || '').trim(),
@@ -70,8 +100,9 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       stock: Number(values.stock),
       image: serializeProductImages(images),
       description: String(values.description || '').trim(),
-      optionLabel: String(values.optionLabel || '').trim(),
-      optionValues: (Array.isArray(values.optionValues) ? values.optionValues : String(values.optionValues || '').split(/[,\n]/)).map((value: string) => value.trim()).filter(Boolean)
+      optionGroups: parsedOptionGroups.groups,
+      optionLabel: firstOptionGroup?.label || '',
+      optionValues: firstOptionGroup?.values || []
     };
     if (!cleaned.name || !cleaned.category || cleaned.mrp <= 0 || cleaned.commission < 0 || cleaned.stock < 0) {
       showToast('Please complete all required product fields.', 'error');
@@ -81,16 +112,15 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
       showToast('Commission cannot be higher than MRP.', 'error');
       return;
     }
-    if ((cleaned.optionLabel && !cleaned.optionValues.length) || (!cleaned.optionLabel && cleaned.optionValues.length)) {
-      showToast('Add both an option name and at least one choice, or leave both blank.', 'error');
-      return;
-    }
     setIsSaving(true);
-    try {
-      await onSave(cleaned);
-    } finally {
-      setIsSaving(false);
-    }
+    onClose();
+    showToast(product ? 'Saving product changes in the background...' : 'Publishing product in the background...');
+
+    void Promise.resolve()
+      .then(() => onSave(cleaned))
+      .catch((error) => {
+        showToast(error instanceof Error ? error.message : 'Could not save product.', 'error');
+      });
   };
 
   return (
@@ -110,7 +140,7 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
               <span className="form-label">Category *</span>
               <select className="form-control" value={values.category || ''} onChange={(event) => update('category', event.target.value)} required>
                 <option value="">Choose category</option>
-                {PRODUCT_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+                {categoryOptions.map((category) => <option key={category}>{category}</option>)}
               </select>
             </label>
             <label className="form-group">
@@ -125,16 +155,11 @@ export function ProductModal({ open, product, onClose, onSave, showToast }: any)
               <span className="form-label">Available stock *</span>
               <input className="form-control" value={values.stock ?? ''} onChange={(event) => update('stock', event.target.value)} type="number" required min="0" step="1" placeholder="25" />
             </label>
-            <label className="form-group">
-              <span className="form-label">Choice name (optional)</span>
-              <input className="form-control" value={values.optionLabel || ''} onChange={(event) => update('optionLabel', event.target.value)} maxLength={60} placeholder="Size or Mobile model" />
-              <span className="form-help">Leave both choice fields blank when they are not needed.</span>
-            </label>
-            <label className="form-group">
-              <span className="form-label">Available choices (optional)</span>
-              <textarea className="form-control" value={Array.isArray(values.optionValues) ? values.optionValues.join(', ') : values.optionValues || ''} onChange={(event) => update('optionValues', event.target.value)} maxLength={500} placeholder="S, M, L, XL" />
-              <span className="form-help">Separate choices with commas or new lines.</span>
-            </label>
+            <ProductOptionGroupsEditor
+              groups={Array.isArray(values.optionGroups) ? values.optionGroups : []}
+              onChange={(optionGroups) => update('optionGroups', optionGroups)}
+              disabled={isSaving}
+            />
             <div className="form-group full">
               <span className="form-label">Product images</span>
               <div className="image-upload-row">
@@ -241,7 +266,7 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
-  const [selectedOptionValue, setSelectedOptionValue] = useState('');
+  const [selectedOptionValues, setSelectedOptionValues] = useState<Record<string, string>>({});
   const [step, setStep] = useState<'details' | 'review'>('details');
   useModal(Boolean(product));
 
@@ -251,7 +276,7 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
     setCustomerPhone('');
     setCustomerAddress('');
     setOrderNotes('');
-    setSelectedOptionValue('');
+    setSelectedOptionValues({});
     setStep('details');
   }, [product]);
 
@@ -260,14 +285,21 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
   const orderQuantity = Number(quantity || 1);
   const productTotal = Number(product.mrp || 0) * orderQuantity;
   const payableTotal = productTotal + ORDER_SHIPPING_CHARGE;
+  const optionGroups = normalizeProductOptionGroups(product.optionGroups, product.optionLabel, product.optionValues);
+  const selectedOptions = normalizeSelectedProductOptions(optionGroups.map((group) => ({
+    label: group.label,
+    value: selectedOptionValues[group.label] || ''
+  })));
+  const firstSelectedOption = selectedOptions[0];
   const orderDetails = {
     productId: product.id,
     customer: customer.trim(),
     customerPhone: customerPhone.trim(),
     customerAddress: customerAddress.trim(),
     orderNotes: orderNotes.trim(),
-    selectedOptionLabel: product.optionLabel || '',
-    selectedOptionValue,
+    selectedOptions,
+    selectedOptionLabel: firstSelectedOption?.label || '',
+    selectedOptionValue: firstSelectedOption?.value || '',
     quantity: orderQuantity
   };
 
@@ -275,6 +307,7 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
     event.preventDefault();
     if (submitting) return;
     if (step === 'details') {
+      if (!areProductSelectionsValid(optionGroups, selectedOptions)) return;
       setStep('review');
       return;
     }
@@ -308,15 +341,20 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
                 <input className="form-control" value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} type="number" required min="1" max={product.stock} step="1" />
                 <span className="form-help">{product.stock} units available at {formatCurrency(product.mrp)} MRP each. Commission: {formatCurrency(product.commission)} per unit.</span>
               </label>
-              {product.optionLabel && product.optionValues?.length ? (
-                <label className="form-group">
-                  <span className="form-label">{product.optionLabel} *</span>
-                  <select className="form-control" value={selectedOptionValue} onChange={(event) => setSelectedOptionValue(event.target.value)} required>
+              {optionGroups.map((group) => (
+                <label className="form-group" key={group.label}>
+                  <span className="form-label">{group.label} *</span>
+                  <select
+                    className="form-control"
+                    value={selectedOptionValues[group.label] || ''}
+                    onChange={(event) => setSelectedOptionValues((current) => ({ ...current, [group.label]: event.target.value }))}
+                    required
+                  >
                     <option value="">Please select</option>
-                    {product.optionValues.map((value: string) => <option value={value} key={value}>{value}</option>)}
+                    {group.values.map((value: string) => <option value={value} key={value}>{value}</option>)}
                   </select>
                 </label>
-              ) : null}
+              ))}
               <label className="form-group full">
                 <span className="form-label">Customer or business name *</span>
                 <input className="form-control" value={customer} onChange={(event) => setCustomer(event.target.value)} required maxLength={120} placeholder="Who is this order for?" />
@@ -340,7 +378,7 @@ export function OrderModal({ product, onClose, onSave, submitting = false }: any
                 <span className="form-label">Product</span>
                 <strong>{product.name}</strong>
                 <p>{orderQuantity} x {formatCurrency(product.mrp)} from {product.seller}</p>
-                {selectedOptionValue ? <p>{product.optionLabel}: {selectedOptionValue}</p> : null}
+                {selectedOptions.map((selection) => <p key={selection.label}>{selection.label}: {selection.value}</p>)}
               </div>
               <div className="order-review-lines" aria-label="Order total breakdown">
                 <div><span>Product total</span><strong>{formatCurrency(productTotal)}</strong></div>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { areProductSelectionsValid, normalizeProductOptionGroups, normalizeSelectedProductOptions } from '../../../../lib/productOptions';
+import type { ProductOptionGroup, SelectedProductOption } from '../../../../types';
 
 type SaleRow = {
   id: string;
@@ -12,6 +14,7 @@ type SaleRow = {
   customer_phone: string;
   customer_address: string;
   order_notes: string;
+  selected_options?: unknown;
   selected_option_label: string;
   selected_option_value: string;
   quantity: number;
@@ -22,6 +25,14 @@ type SaleRow = {
   razorpay_order_id: string | null;
   razorpay_payment_id: string | null;
   created_at: string;
+};
+
+type ProductRow = {
+  mrp: number;
+  stock: number;
+  option_groups?: unknown;
+  option_label?: string | null;
+  option_values?: string[] | null;
 };
 
 type ProfileRow = {
@@ -80,6 +91,11 @@ export async function POST(request: NextRequest) {
   const orderNotes = cleanString(order.orderNotes);
   const selectedOptionLabel = cleanString(order.selectedOptionLabel);
   const selectedOptionValue = cleanString(order.selectedOptionValue);
+  const requestedSelectedOptions = normalizeSelectedProductOptions(
+    order.selectedOptions,
+    selectedOptionLabel,
+    selectedOptionValue
+  );
 
   if (!productId || !Number.isInteger(quantity) || quantity < 1) {
     return NextResponse.json({ error: 'Product and valid quantity are required.' }, { status: 400 });
@@ -152,18 +168,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Payment does not match the selected product and quantity.' }, { status: 400 });
   }
 
-  const { data: product, error: productError } = await userClient
-    .from('products')
-    .select('mrp, stock, option_label, option_values')
-    .eq('id', productId)
-    .single<{ mrp: number; stock: number; option_label: string; option_values: string[] }>();
+  const { data: product, error: productError } = await loadProductForCheckout(userClient, productId);
 
   if (productError || !product) {
     return NextResponse.json({ error: 'Product was not found.' }, { status: 404 });
   }
-  const allowedOptions = Array.isArray(product.option_values) ? product.option_values : [];
-  if (allowedOptions.length && (!selectedOptionValue || !allowedOptions.includes(selectedOptionValue))) {
-    return NextResponse.json({ error: `Select a valid ${product.option_label || 'product option'}.` }, { status: 400 });
+
+  const optionGroups = normalizeProductOptionGroups(product.option_groups, product.option_label, product.option_values);
+  const selectedOptions = canonicalizeSelectedOptions(optionGroups, requestedSelectedOptions);
+  if (!selectedOptions) {
+    const choiceNames = optionGroups.map((group) => group.label).join(' and ');
+    return NextResponse.json({
+      error: choiceNames ? `Select a valid choice for ${choiceNames}.` : 'This product does not accept the submitted choices.'
+    }, { status: 400 });
   }
 
   const productTotal = Number(product.mrp) * quantity;
@@ -174,20 +191,43 @@ export async function POST(request: NextRequest) {
   }
 
   const newOrderId = `ord_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  const { data: sale, error: saleError } = await serviceClient.rpc('place_paid_order', {
+  let { data: sale, error: saleError } = await serviceClient.rpc('place_paid_order_v2', {
     p_order_id: newOrderId,
     p_product_id: productId,
     p_customer: customer,
     p_customer_phone: customerPhone,
     p_customer_address: customerAddress,
     p_order_notes: orderNotes,
-    p_selected_option_label: allowedOptions.length ? product.option_label : '',
-    p_selected_option_value: allowedOptions.length ? selectedOptionValue : '',
+    p_selected_options: selectedOptions,
     p_quantity: quantity,
     p_broker: brokerName,
     p_razorpay_order_id: razorpayOrderId,
     p_razorpay_payment_id: razorpayPaymentId
   }).single<SaleRow>();
+
+  if (saleError && isMissingRpcFunction(saleError, 'place_paid_order_v2')) {
+    if (optionGroups.length > 1) {
+      return NextResponse.json({
+        error: 'Payment succeeded, but multiple product choices are not enabled in Supabase yet. Run the latest database.sql, then retry this payment.'
+      }, { status: 500 });
+    }
+
+    const firstSelection = selectedOptions[0];
+    ({ data: sale, error: saleError } = await serviceClient.rpc('place_paid_order', {
+      p_order_id: newOrderId,
+      p_product_id: productId,
+      p_customer: customer,
+      p_customer_phone: customerPhone,
+      p_customer_address: customerAddress,
+      p_order_notes: orderNotes,
+      p_selected_option_label: firstSelection?.label || '',
+      p_selected_option_value: firstSelection?.value || '',
+      p_quantity: quantity,
+      p_broker: brokerName,
+      p_razorpay_order_id: razorpayOrderId,
+      p_razorpay_payment_id: razorpayPaymentId
+    }).single<SaleRow>());
+  }
 
   if (saleError || !sale) {
     return NextResponse.json({ error: saleError?.message || 'Payment succeeded, but the order could not be saved.' }, { status: 500 });
@@ -216,6 +256,55 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ sale: savedSale });
+}
+
+async function loadProductForCheckout(client: SupabaseClient, productId: string) {
+  const load = (columns: string) => client
+    .from('products')
+    .select(columns)
+    .eq('id', productId)
+    .single<ProductRow>();
+
+  let result = await load('mrp, stock, option_groups, option_label, option_values');
+  if (result.error && isMissingProductOptionSchema(result.error)) {
+    result = await load('mrp, stock, option_label, option_values');
+  }
+  if (result.error && isMissingProductOptionSchema(result.error)) {
+    result = await load('mrp, stock');
+  }
+  return result;
+}
+
+function canonicalizeSelectedOptions(
+  optionGroups: ProductOptionGroup[],
+  selections: SelectedProductOption[]
+): SelectedProductOption[] | null {
+  if (!areProductSelectionsValid(optionGroups, selections)) return null;
+
+  return optionGroups.map((group) => {
+    const selection = selections.find(
+      (item) => item.label.toLocaleLowerCase() === group.label.toLocaleLowerCase()
+    );
+    return {
+      label: group.label,
+      value: selection?.value || ''
+    };
+  });
+}
+
+function isMissingProductOptionSchema(error: unknown) {
+  const value = error as { code?: string; message?: string; details?: string } | null;
+  const code = String(value?.code || '').toLowerCase();
+  const message = String(value?.message || value?.details || '').toLowerCase();
+  return ['42703', 'pgrst204'].includes(code)
+    && (message.includes('option_groups') || message.includes('option_label') || message.includes('option_values'));
+}
+
+function isMissingRpcFunction(error: unknown, functionName: string) {
+  const value = error as { code?: string; message?: string; details?: string; hint?: string } | null;
+  const code = String(value?.code || '').toLowerCase();
+  const message = `${value?.message || ''} ${value?.details || ''} ${value?.hint || ''}`.toLowerCase();
+  return ['42883', 'pgrst202'].includes(code) && message.includes(functionName.toLowerCase());
 }
 
 async function fetchRazorpayResource(path: string) {
@@ -318,7 +407,7 @@ function buildOrderEmailHtml(order: SaleRow, sellerName: string) {
   const rows = [
     ['Product', order.product_name],
     ['Quantity', String(order.quantity)],
-    ...(order.selected_option_value ? [[order.selected_option_label || 'Option', order.selected_option_value]] : []),
+    ...getSelectedOptionRows(order),
     ['Broker', order.broker],
     ['Customer', order.customer],
     ['Customer phone', order.customer_phone],
@@ -347,7 +436,7 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
     '',
     `Product: ${order.product_name}`,
     `Quantity: ${order.quantity}`,
-    ...(order.selected_option_value ? [`${order.selected_option_label || 'Option'}: ${order.selected_option_value}`] : []),
+    ...getSelectedOptionTextLines(order),
     `Broker: ${order.broker}`,
     `Customer: ${order.customer}`,
     `Customer phone: ${order.customer_phone}`,
@@ -372,7 +461,7 @@ function buildBrokerInvoiceHtml(order: SaleRow, brokerName: string, paymentId: s
     ['Customer phone', order.customer_phone],
     ['Delivery address', order.customer_address],
     ['Quantity', String(order.quantity)],
-    ...(order.selected_option_value ? [[order.selected_option_label || 'Option', order.selected_option_value]] : []),
+    ...getSelectedOptionRows(order),
     ['Unit price', formatRupees(order.unit_price)],
     ['Product total', formatRupees(totals.productTotal)],
     ['Shipping charge', formatRupees(totals.shippingCharge)],
@@ -406,7 +495,7 @@ function buildBrokerInvoiceText(order: SaleRow, brokerName: string, paymentId: s
     `Customer phone: ${order.customer_phone}`,
     `Delivery address: ${order.customer_address}`,
     `Quantity: ${order.quantity}`,
-    ...(order.selected_option_value ? [`${order.selected_option_label || 'Option'}: ${order.selected_option_value}`] : []),
+    ...getSelectedOptionTextLines(order),
     `Unit price: ${formatRupees(order.unit_price)}`,
     `Product total: ${formatRupees(totals.productTotal)}`,
     `Shipping charge: ${formatRupees(totals.shippingCharge)}`,
@@ -427,7 +516,7 @@ function buildBrokerInvoicePdf(order: SaleRow, brokerName: string, paymentId: st
     ['Customer phone', order.customer_phone],
     ['Delivery address', order.customer_address],
     ['Quantity', String(order.quantity)],
-    ...(order.selected_option_value ? [[order.selected_option_label || 'Option', order.selected_option_value]] : []),
+    ...getSelectedOptionRows(order),
     ['Unit price', formatPdfMoney(order.unit_price)],
     ['Product total', formatPdfMoney(totals.productTotal)],
     ['Shipping charge', formatPdfMoney(totals.shippingCharge)],
@@ -460,6 +549,22 @@ function buildBrokerInvoicePdf(order: SaleRow, brokerName: string, paymentId: st
   drawText(48, 72, 9, 'Generated by DigitQuo Store. Keep this invoice for your records.');
 
   return createSinglePagePdf(streamLines.join('\n'));
+}
+
+function getSelectedOptionRows(order: SaleRow): string[][] {
+  return getSelectedOptions(order).map((selection) => [selection.label, selection.value]);
+}
+
+function getSelectedOptionTextLines(order: SaleRow) {
+  return getSelectedOptions(order).map((selection) => `${selection.label}: ${selection.value}`);
+}
+
+function getSelectedOptions(order: SaleRow) {
+  return normalizeSelectedProductOptions(
+    order.selected_options,
+    order.selected_option_label,
+    order.selected_option_value
+  );
 }
 
 function getOrderTotals(order: SaleRow) {
