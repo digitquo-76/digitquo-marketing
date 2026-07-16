@@ -47,43 +47,47 @@ export function Navbar() {
   const closeMobile = () => setMobileOpen(false);
 
   return (
-    <nav id="navbar" className={`navbar${scrolled ? ' scrolled' : ''}`}>
+    <nav id="navbar" className={`navbar${scrolled ? ' scrolled' : ''}${mobileOpen ? ' mobile-open' : ''}`}>
       <div className="container nav-container">
         <Link href="/" className="logo" id="logo" onClick={closeMobile}>
           <LogoMark />
           <span className="logo-text">DigitQuo Store</span>
         </Link>
-        <ul className={`nav-links${mobileOpen ? ' mobile-open' : ''}`} id="nav-links">
-          {[
-            ['features', 'Features'],
-            ['how-it-works', 'How It Works'],
-            ['roles', "Who It's For"],
-            ['testimonials', 'Testimonials'],
-            ['contact', 'Contact']
-          ].map(([id, label]) => (
-            <li key={id}>
-              <a
-                href={`#${id}`}
-                className={activeSection === id ? 'active' : ''}
-                aria-current={activeSection === id ? 'location' : undefined}
-                onClick={closeMobile}
-              >
-                {label}
-              </a>
-            </li>
-          ))}
-        </ul>
-        <div className={`nav-actions${mobileOpen ? ' mobile-open' : ''}`} id="nav-actions">
-          <Link href="/login" className="btn btn-ghost" id="btn-login">Log In</Link>
-          <Link href="/register" className="btn btn-primary" id="btn-get-started" onClick={closeMobile}>
-            Get Started <ArrowRightIcon size={14} />
-          </Link>
+        <div className={`nav-menu${mobileOpen ? ' mobile-open' : ''}`} id="nav-menu">
+          <ul className="nav-links" id="nav-links">
+            {[
+              ['features', 'Features'],
+              ['how-it-works', 'How It Works'],
+              ['roles', "Who It's For"],
+              ['testimonials', 'Testimonials'],
+              ['contact', 'Contact']
+            ].map(([id, label]) => (
+              <li key={id}>
+                <a
+                  href={`#${id}`}
+                  className={activeSection === id ? 'active' : ''}
+                  aria-current={activeSection === id ? 'location' : undefined}
+                  onClick={closeMobile}
+                >
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <div className="nav-actions" id="nav-actions">
+            <Link href="/login" className="btn btn-ghost" id="btn-login" onClick={closeMobile}>Log In</Link>
+            <Link href="/register" className="btn btn-primary" id="btn-get-started" onClick={closeMobile}>
+              Get Started <ArrowRightIcon size={14} />
+            </Link>
+          </div>
         </div>
         <button
           className={`hamburger${mobileOpen ? ' active' : ''}`}
           id="hamburger"
           type="button"
           aria-label="Toggle navigation menu"
+          aria-expanded={mobileOpen}
+          aria-controls="nav-menu"
           onClick={() => setMobileOpen((open) => !open)}
         >
           <span /><span /><span />
