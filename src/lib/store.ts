@@ -377,24 +377,43 @@ export function useDigitQuoStore({
     const previous = products;
     setProductsState(prev => prev.map(p => p.id === storedProduct.id ? storedProduct : p));
     const optionGroups = normalizeProductOptionGroups(storedProduct.optionGroups, storedProduct.optionLabel, storedProduct.optionValues);
-    let { error } = await supabase.from('products').update(mapProductToDB(storedProduct, 'json')).eq('id', storedProduct.id);
+    let { data: updatedProduct, error } = await supabase
+      .from('products')
+      .update(mapProductToDB(storedProduct, 'json'))
+      .eq('id', storedProduct.id)
+      .select('id')
+      .maybeSingle<{ id: string }>();
     if (error && isMissingProductOptionSchema(error)) {
       if (optionGroups.length > 1) {
         setProductsState(previous);
         throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
       }
-      ({ error } = await supabase.from('products').update(mapProductToDB(storedProduct, 'legacy')).eq('id', storedProduct.id));
+      ({ data: updatedProduct, error } = await supabase
+        .from('products')
+        .update(mapProductToDB(storedProduct, 'legacy'))
+        .eq('id', storedProduct.id)
+        .select('id')
+        .maybeSingle<{ id: string }>());
       if (error && isMissingProductOptionSchema(error)) {
         if (optionGroups.length) {
           setProductsState(previous);
           throw new Error(PRODUCT_OPTIONS_MIGRATION_MESSAGE);
         }
-        ({ error } = await supabase.from('products').update(mapProductToDB(storedProduct, 'none')).eq('id', storedProduct.id));
+        ({ data: updatedProduct, error } = await supabase
+          .from('products')
+          .update(mapProductToDB(storedProduct, 'none'))
+          .eq('id', storedProduct.id)
+          .select('id')
+          .maybeSingle<{ id: string }>());
       }
     }
     if (error) {
       setProductsState(previous);
       throw error;
+    }
+    if (!updatedProduct) {
+      setProductsState(previous);
+      throw new Error('You do not have permission to update this product. It may belong to another seller account.');
     }
     invalidateWorkspaceResource(user?.id, 'products');
   };
@@ -593,7 +612,11 @@ export function useDigitQuoStore({
   };
 
   // Helper getters to replace static constants
-  const currentSellerName = profile?.role === 'seller' ? profile.business_name || profile.display_name || user?.user_metadata?.full_name || profile.email : 'My Store';
+  const currentSellerName = profile?.role === 'seller'
+    ? [profile.business_name, profile.display_name, user?.user_metadata?.full_name, profile.email]
+        .map((value) => String(value || '').trim())
+        .find(Boolean) || 'My Store'
+    : 'My Store';
   const currentBrokerName = profile?.role === 'broker' ? profile.display_name || user?.user_metadata?.full_name || profile.email : 'Partner Broker';
 
   return { 

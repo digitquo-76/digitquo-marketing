@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { formatCurrency, getProductImages, serializeProductImages } from '../../lib/utils';
+import { PRODUCT_DESCRIPTION_MAX_LENGTH, normalizeProductDescription } from '../../lib/productDescription';
 import {
   areProductSelectionsValid,
   normalizeProductOptionGroups,
@@ -17,6 +18,7 @@ import {
 const PRODUCT_IMAGE_MAX_SIZE_MB = 20;
 const PRODUCT_IMAGE_MAX_DIMENSION = 1600;
 const PRODUCT_IMAGE_TARGET_SIZE = 1.25 * 1024 * 1024;
+const PRODUCT_IMAGE_MAX_COUNT = 30;
 const ORDER_SHIPPING_CHARGE = 50;
 
 type ProductModalProps = {
@@ -35,6 +37,7 @@ export function ProductModal({ open, product, onClose, onSave, showToast, catego
           ...product,
           mrp: product.mrp ?? product.price,
           commission: product.commission ?? Math.max(0, Number(product.mrp || 0) - Number(product.price || 0)),
+          description: normalizeProductDescription(product.description),
           optionGroups: createProductOptionGroupDrafts(product.optionGroups, product.optionLabel, product.optionValues)
         }
       : { name: '', category: '', mrp: '', commission: '', stock: '', image: '', description: '', optionGroups: [] },
@@ -73,8 +76,8 @@ export function ProductModal({ open, product, onClose, onSave, showToast, catego
       showToast(`Each image must be smaller than ${PRODUCT_IMAGE_MAX_SIZE_MB} MB.`, 'error');
       return;
     }
-    if (images.length + selected.length > 8) {
-      showToast('You can add up to 8 product photos.', 'error');
+    if (images.length + selected.length > PRODUCT_IMAGE_MAX_COUNT) {
+      showToast(`You can add up to ${PRODUCT_IMAGE_MAX_COUNT} product photos.`, 'error');
       return;
     }
 
@@ -176,11 +179,11 @@ export function ProductModal({ open, product, onClose, onSave, showToast, catego
                   <input type="file" accept="image/*" multiple onChange={(event) => updateImageFiles(event.target.files)} />
                 </label>
               </div>
-              <span className="form-help">Select up to 8 images. Photos are automatically resized for fast loading. Max input size: {PRODUCT_IMAGE_MAX_SIZE_MB} MB each.</span>
+              <span className="form-help">Select up to {PRODUCT_IMAGE_MAX_COUNT} images. Photos are automatically resized for fast loading. Max input size: {PRODUCT_IMAGE_MAX_SIZE_MB} MB each.</span>
             </div>
             <label className="form-group full">
               <span className="form-label">Description</span>
-              <textarea className="form-control" value={values.description || ''} onChange={(event) => update('description', event.target.value)} maxLength={300} placeholder="Add useful product details for brokers" />
+              <textarea className="form-control" value={values.description || ''} onChange={(event) => update('description', event.target.value)} maxLength={PRODUCT_DESCRIPTION_MAX_LENGTH} rows={8} placeholder="Add useful product details for brokers" />
             </label>
           </div>
         </div>

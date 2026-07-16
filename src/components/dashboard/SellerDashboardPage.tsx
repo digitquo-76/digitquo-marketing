@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useDigitQuoStore } from '../../lib/store';
 import { normalizeProductOptionGroups, optionGroupsEqual } from '../../lib/productOptions';
+import { PRODUCT_DESCRIPTION_MAX_LENGTH, normalizeProductDescription } from '../../lib/productDescription';
 import { mergeProductCategoryNames } from '../../lib/categories';
 import { useProductCategories } from '../../lib/useProductCategories';
 import type { Product, ProductOptionGroup } from '../../types';
@@ -651,7 +652,7 @@ function SellerProductDetailForm({
 
       <label className="product-detail-description-block seller-product-description-editor">
         <span>Description</span>
-        <textarea value={values.description} onChange={(event) => update('description', event.target.value)} maxLength={300} placeholder="Add useful product details for brokers" />
+        <textarea value={values.description} onChange={(event) => update('description', event.target.value)} maxLength={PRODUCT_DESCRIPTION_MAX_LENGTH} rows={8} placeholder="Add useful product details for brokers" />
       </label>
 
       <ProductOptionGroupsEditor groups={values.optionGroups} onChange={(optionGroups) => update('optionGroups', optionGroups)} disabled={saving} />
@@ -672,7 +673,7 @@ function productToDetailForm(product: Product) {
     mrp: String(product.mrp ?? ''),
     commission: String(product.commission ?? ''),
     stock: String(product.stock ?? ''),
-    description: product.description || '',
+    description: normalizeProductDescription(product.description),
     optionGroups: createProductOptionGroupDrafts(product.optionGroups, product.optionLabel, product.optionValues)
   };
 }

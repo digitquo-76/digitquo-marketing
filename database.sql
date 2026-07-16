@@ -241,7 +241,12 @@ stable
 security definer
 set search_path = public
 as $$
-  select coalesce(display_name, email) from public.profiles where id = auth.uid()
+  select case
+    when role = 'seller' then coalesce(nullif(btrim(business_name), ''), nullif(btrim(display_name), ''), btrim(email))
+    else coalesce(nullif(btrim(display_name), ''), btrim(email))
+  end
+  from public.profiles
+  where id = auth.uid()
 $$;
 
 create or replace function public.current_profile_onboarded()

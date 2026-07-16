@@ -35,6 +35,8 @@ type ImportResult = {
   created: number;
   updated: number;
   categories: string[];
+  imageDetailWarnings: number;
+  imageDetailWarningIds: string[];
   products: ImportProduct[];
 };
 
@@ -237,6 +239,11 @@ export function BaapstoreImporterPage() {
                 )}
                 {result.cappedAtPageLimit && (
                   <div className="importer-note">This listing has {result.totalPages} pages. Increase pages to scan, or run the next batch from a later start page.</div>
+                )}
+                {result.imageDetailWarnings > 0 && (
+                  <div className="importer-note">
+                    Baapstore did not return a complete gallery for {result.imageDetailWarnings} product{result.imageDetailWarnings === 1 ? '' : 's'}. Existing image galleries were kept where available; re-run the import later to retry them.
+                  </div>
                 )}
                 <div className="table-wrap">
                   <table className="data-table importer-table">

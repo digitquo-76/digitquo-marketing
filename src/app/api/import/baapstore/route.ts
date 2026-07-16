@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  getSerializedBaapstoreProductImages,
+  mergeBaapstoreProductImages,
+  normalizeBaapstoreImageUrl,
+  parseBaapstoreDetailImages,
+  serializeBaapstoreProductImages
+} from '../../../../lib/baapstoreImages';
 import { normalizeProductOptionGroups } from '../../../../lib/productOptions';
 import { normalizeProductCategoryName, productCategoryKey } from '../../../../lib/categories';
+import { normalizeProductDescription } from '../../../../lib/productDescription';
 import type { ProductOptionGroup } from '../../../../types';
 
 type ProductRow = {
@@ -30,13 +38,16 @@ type ParsedProduct = {
   baapstorePrice: number;
   avgRetailPrice: number | null;
   optionGroups: ProductOptionGroup[];
+  detailImagesLoaded?: boolean;
 };
 
-type ExistingProductChoices = {
+type ExistingProductData = {
   id: string;
+  image?: string | null;
+  description?: string | null;
   option_groups?: unknown;
-  option_label?: string;
-  option_values?: string[];
+  option_label?: string | null;
+  option_values?: string[] | null;
 };
 
 const TARGET_SELLER_EMAIL = 'ebrahimsekh06s@gmail.com';
@@ -169,7 +180,12 @@ export async function POST(request: NextRequest) {
     .limit(1)
     .maybeSingle<{ email: string; display_name: string | null; business_name: string | null }>();
 
-  const sellerName = cleanString(sellerProfile?.business_name || sellerProfile?.display_name || sellerProfile?.email || TARGET_SELLER_EMAIL);
+  const sellerName = [
+    sellerProfile?.business_name,
+    sellerProfile?.display_name,
+    sellerProfile?.email,
+    TARGET_SELLER_EMAIL
+  ].map(cleanString).find(Boolean) || TARGET_SELLER_EMAIL;
   let seedHtml = '';
   try {
     seedHtml = await fetchBaapstoreHtml(parsedSourceUrl.toString());
@@ -199,7 +215,16 @@ export async function POST(request: NextRequest) {
   const productsWithImages = await enrichProductsWithDetailImages(uniqueProducts);
   const importedRows = productsWithImages.map((product) => toProductRow(product, sellerName, stock));
   const existingProducts = await getExistingProducts(serviceClient, importedRows.map((row) => row.id));
-  const rows = importedRows.map((row) => preserveExistingChoices(row, existingProducts.get(row.id)));
+  const incompleteImageIds = new Set(
+    productsWithImages
+      .filter((product) => !product.detailImagesLoaded)
+      .map((product) => `baapstore_${product.sourceId}`)
+  );
+  const rows = importedRows.map((row) => preserveExistingProductData(
+    row,
+    existingProducts.get(row.id),
+    incompleteImageIds.has(row.id)
+  ));
   const existingIds = new Set(existingProducts.keys());
 
   if (!dryRun && rows.length) {
@@ -249,6 +274,8 @@ export async function POST(request: NextRequest) {
     created: dryRun ? 0 : created,
     updated: dryRun ? 0 : updated,
     categories: Array.from(new Set(rows.map((row) => row.category))).sort(),
+    imageDetailWarnings: incompleteImageIds.size,
+    imageDetailWarningIds: Array.from(incompleteImageIds).slice(0, 40),
     products: rows.slice(0, 40).map((row) => ({
       id: row.id,
       name: row.name,
@@ -256,8 +283,8 @@ export async function POST(request: NextRequest) {
       mrp: row.mrp,
       commission: row.commission,
       stock: row.stock,
-      image: getSerializedProductImages(row.image)[0] || '',
-      imageCount: getSerializedProductImages(row.image).length,
+      image: getSerializedBaapstoreProductImages(row.image)[0] || '',
+      imageCount: getSerializedBaapstoreProductImages(row.image).length,
       sourceUrl: productsWithImages.find((product) => `baapstore_${product.sourceId}` === row.id)?.sourceUrl || ''
     }))
   });
@@ -276,7 +303,7 @@ function parseBaapstoreUrl(value: string) {
 }
 
 async function fetchBaapstoreHtml(url: string) {
-  const response = await fetchWithBrowserHeaders(url);
+  const response = await fetchWithTransientRetries(url);
 
   if (!response.ok) {
     const warmedResponse = response.status === 403 ? await fetchAfterCookieWarmup(url) : null;
@@ -284,7 +311,7 @@ async function fetchBaapstoreHtml(url: string) {
 
     const fallbackUrl = getCategoryFallbackUrl(url);
     if (fallbackUrl && fallbackUrl !== url) {
-      const fallbackResponse = await fetchWithBrowserHeaders(fallbackUrl);
+      const fallbackResponse = await fetchWithTransientRetries(fallbackUrl);
       if (fallbackResponse.ok) return fallbackResponse.text();
 
       const warmedFallbackResponse = fallbackResponse.status === 403 ? await fetchAfterCookieWarmup(fallbackUrl) : null;
@@ -305,7 +332,31 @@ async function fetchAfterCookieWarmup(url: string) {
   const homeResponse = await fetchWithBrowserHeaders(target.origin);
   const cookie = collectCookies(homeResponse);
 
-  return fetchWithBrowserHeaders(url, cookie);
+  return fetchWithTransientRetries(url, cookie);
+}
+
+async function fetchWithTransientRetries(url: string, cookie = '') {
+  let response: Response | null = null;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      response = await fetchWithBrowserHeaders(url, cookie);
+      const transientStatus = response.status === 408
+        || response.status === 425
+        || response.status === 429
+        || response.status >= 500;
+      if (!transientStatus || attempt === 2) return response;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 2) throw error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+  }
+
+  if (response) return response;
+  throw lastError instanceof Error ? lastError : new Error(`Could not fetch ${url}.`);
 }
 
 function fetchWithBrowserHeaders(url: string, cookie = '') {
@@ -390,7 +441,9 @@ function parseProductCard(card: string, category: string, pageUrl: URL): ParsedP
     cleanProductText(decodeHtml(getMatch(card, /<div[^>]+class="name"[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/i) || getMatch(card, /<img[^>]+alt="([^"]+)"/i) || sourceId)),
     120
   );
-  const description = limitText(cleanProductText(decodeHtml(stripTags(getMatch(card, /<div[^>]+class="description"[^>]*>([\s\S]*?)<\/div>/i) || ''))), 700);
+  const description = normalizeProductDescription(
+    getMatch(card, /<div[^>]+class="description"[^>]*>([\s\S]*?)<\/div>/i) || ''
+  ).replace(/\bDropship(?:ping)?\b/gi, '').trim();
   const baapstorePrice = parseFirstPrice(card);
   const avgRetailPrice = parsePrice(getMatch(card, /Avg\s+Retail\s+Price:\s*[^0-9]*([0-9][0-9,.]*)/i) || '');
 
@@ -423,7 +476,7 @@ function toProductRow(product: ParsedProduct, seller: string, stock: number): Pr
     commission: priceParts.commission,
     stock,
     seller,
-    image: serializeProductImages(product.images),
+    image: serializeBaapstoreProductImages(product.images),
     description: product.description,
     option_label: primaryGroup?.label || '',
     option_values: primaryGroup?.values || [],
@@ -432,7 +485,11 @@ function toProductRow(product: ParsedProduct, seller: string, stock: number): Pr
 }
 
 async function enrichProductsWithDetailImages(products: ParsedProduct[]) {
-  const enriched = products.map((product) => ({ ...product, images: mergeProductImages(product.images) }));
+  const enriched = products.map((product) => ({
+    ...product,
+    images: mergeBaapstoreProductImages(product.images),
+    detailImagesLoaded: false
+  }));
   let cursor = 0;
 
   async function worker() {
@@ -445,14 +502,16 @@ async function enrichProductsWithDetailImages(products: ParsedProduct[]) {
 
       try {
         const html = await fetchBaapstoreHtml(product.sourceUrl);
-        const detailImages = parseDetailImages(html, product.sourceId);
+        const detailImages = parseBaapstoreDetailImages(html);
         const productOptions = parseProductOptions(html);
         if (detailImages.length) {
-          product.images = mergeProductImages([...detailImages, ...product.images]);
+          product.images = mergeBaapstoreProductImages([...detailImages, ...product.images]);
+          product.detailImagesLoaded = true;
         }
         product.optionGroups = productOptions;
       } catch {
-        product.images = mergeProductImages(product.images);
+        product.images = mergeBaapstoreProductImages(product.images);
+        product.detailImagesLoaded = false;
       }
     }
   }
@@ -474,78 +533,6 @@ function parseProductOptions(html: string) {
     if (values.length) groups.push({ label, values });
   }
   return normalizeProductOptionGroups(groups);
-}
-
-function parseDetailImages(html: string, sourceId: string) {
-  const pid = sourceId.replace(/\D/g, '');
-  const normalizedHtml = html.replace(/\\\//g, '/');
-  const matches = Array.from(normalizedHtml.matchAll(/(?:https?:\/\/)?baapstore-images\.blr1\.cdn\.digitaloceanspaces\.com\/[^"'<>\s)]+/gi))
-    .map((match) => normalizeBaapstoreImageUrl(match[0]))
-    .filter(Boolean);
-
-  const productImages = matches.filter((image) => {
-    const lower = image.toLowerCase();
-    return lower.includes('size-chart') || lower.includes(`pid-${pid}`) || lower.includes(`pid${pid}`);
-  });
-
-  return mergeProductImages(productImages);
-}
-
-function mergeProductImages(images: string[]) {
-  const bestByImage = new Map<string, string>();
-
-  images
-    .map(normalizeBaapstoreImageUrl)
-    .filter(Boolean)
-    .forEach((image) => {
-      const key = image.replace(/-\d+x\d+(?=\.[a-z]+$)/i, '');
-      const current = bestByImage.get(key);
-      if (!current || imageRank(image) > imageRank(current)) {
-        bestByImage.set(key, image);
-      }
-    });
-
-  return Array.from(bestByImage.values()).slice(0, 8);
-}
-
-function imageRank(image: string) {
-  const dimensions = image.match(/-(\d+)x(\d+)(?=\.[a-z]+$)/i);
-  if (!dimensions) return 0;
-  return Number(dimensions[1]) * Number(dimensions[2]);
-}
-
-function normalizeBaapstoreImageUrl(value: string) {
-  const clean = decodeHtml(value)
-    .replace(/^\/\//, 'https://')
-    .replace(/^baapstore-images\./i, 'https://baapstore-images.')
-    .split('?')[0]
-    .trim();
-
-  if (!clean) return '';
-  if (!/^https:\/\/baapstore-images\.blr1\.cdn\.digitaloceanspaces\.com\//i.test(clean)) return '';
-  return clean;
-}
-
-function serializeProductImages(images: string[]) {
-  const clean = mergeProductImages(images);
-  if (!clean.length) return '';
-  if (clean.length === 1) return clean[0];
-  return JSON.stringify(clean);
-}
-
-function getSerializedProductImages(value: string) {
-  const raw = cleanString(value);
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed.map((item) => normalizeBaapstoreImageUrl(String(item || ''))).filter(Boolean);
-  } catch {
-    // Single-image products are stored as a plain URL.
-  }
-
-  const image = normalizeBaapstoreImageUrl(raw);
-  return image ? [image] : [];
 }
 
 function calculatePrice(sourcePrice: number) {
@@ -587,41 +574,58 @@ function dedupeProducts(products: ParsedProduct[]) {
 }
 
 async function getExistingProducts(serviceClient: any, ids: string[]) {
-  const found = new Map<string, ExistingProductChoices>();
+  const found = new Map<string, ExistingProductData>();
   if (!ids.length) return found;
 
   for (let index = 0; index < ids.length; index += 200) {
     let result = await serviceClient
       .from('products')
-      .select('id,option_groups,option_label,option_values')
+      .select('id,image,description,option_groups,option_label,option_values')
       .in('id', ids.slice(index, index + 200));
 
     if (result.error && isMissingDatabaseColumn(result.error, 'option_groups')) {
       result = await serviceClient
         .from('products')
-        .select('id,option_label,option_values')
+        .select('id,image,description,option_label,option_values')
         .in('id', ids.slice(index, index + 200));
     }
 
     if (result.error) throw new Error(result.error.message || 'Could not check existing imported products.');
-    (result.data || []).forEach((row: ExistingProductChoices) => found.set(row.id, row));
+    (result.data || []).forEach((row: ExistingProductData) => found.set(row.id, row));
   }
 
   return found;
 }
 
-function preserveExistingChoices(row: ProductRow, existing?: ExistingProductChoices) {
-  if (row.option_groups.length || !existing) return row;
+function preserveExistingProductData(
+  row: ProductRow,
+  existing: ExistingProductData | undefined,
+  preserveExistingImages: boolean
+) {
+  if (!existing) return row;
 
-  const optionGroups = normalizeProductOptionGroups(
-    existing.option_groups,
-    existing.option_label,
-    existing.option_values
-  );
-  if (!optionGroups.length) return row;
+  const existingDescription = normalizeProductDescription(existing.description);
+  const existingImages = preserveExistingImages
+    ? getSerializedBaapstoreProductImages(existing.image || '')
+    : [];
+  const optionGroups = row.option_groups.length
+    ? row.option_groups
+    : normalizeProductOptionGroups(
+        existing.option_groups,
+        existing.option_label || '',
+        existing.option_values || []
+      );
+
+  const nextRow = {
+    ...row,
+    description: existingDescription || row.description,
+    image: existingImages.length ? serializeBaapstoreProductImages(existingImages) : row.image
+  };
+
+  if (!optionGroups.length) return nextRow;
 
   return {
-    ...row,
+    ...nextRow,
     option_groups: optionGroups,
     option_label: optionGroups[0].label,
     option_values: optionGroups[0].values
