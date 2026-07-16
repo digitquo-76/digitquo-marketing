@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { COMPANY_EMAIL, COMPANY_NAME, COMPANY_PHONE } from '../../../../lib/company';
 import { normalizeSelectedProductOptions } from '../../../../lib/productOptions';
 
 type SaleRow = {
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({
       from: resendFromEmail,
       to: seller.email,
+      reply_to: COMPANY_EMAIL,
       subject: `New DigitQuo Store order: ${order.product_name}`,
       html: buildOrderEmailHtml(order, sellerName),
       text: buildOrderEmailText(order, sellerName)
@@ -157,6 +159,7 @@ function buildOrderEmailHtml(order: SaleRow, sellerName: string) {
           </tr>
         `).join('')}
       </table>
+      <p style="margin:18px 0 0;color:#6d6578;font-size:13px">${COMPANY_NAME} | ${COMPANY_PHONE} | ${COMPANY_EMAIL}</p>
     </div>
   `;
 }
@@ -175,7 +178,9 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
     `Customer phone: ${order.customer_phone}`,
     `Delivery address: ${order.customer_address}`,
     `Order notes: ${order.order_notes || 'None'}`,
-    `Total: ${formatRupees(order.total)}`
+    `Total: ${formatRupees(order.total)}`,
+    '',
+    `${COMPANY_NAME} | ${COMPANY_PHONE} | ${COMPANY_EMAIL}`
   ].join('\n');
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { COMPANY_EMAIL, COMPANY_NAME, COMPANY_PHONE } from '../../../../lib/company';
 
 type ClaimRow = {
   id: string;
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({
       from: resendFromEmail,
       to: adminEmails,
+      reply_to: COMPANY_EMAIL,
       subject: `Commission claim initiated: ${claim.broker} requested ${formatRupees(claim.points)}`,
       html: buildClaimEmailHtml(claim),
       text: buildClaimEmailText(claim)
@@ -133,6 +135,7 @@ function buildClaimEmailHtml(claim: ClaimRow) {
           </tr>
         `).join('')}
       </table>
+      <p style="margin:18px 0 0;color:#6d6578;font-size:13px">${COMPANY_NAME} | ${COMPANY_PHONE} | ${COMPANY_EMAIL}</p>
     </div>
   `;
 }
@@ -141,7 +144,9 @@ function buildClaimEmailText(claim: ClaimRow) {
   return [
     'A broker has initiated a commission payout claim.',
     '',
-    ...buildClaimRows(claim).map(([label, value]) => `${label}: ${value}`)
+    ...buildClaimRows(claim).map(([label, value]) => `${label}: ${value}`),
+    '',
+    `${COMPANY_NAME} | ${COMPANY_PHONE} | ${COMPANY_EMAIL}`
   ].join('\n');
 }
 

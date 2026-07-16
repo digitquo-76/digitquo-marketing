@@ -1,4 +1,5 @@
 import { LegalPage } from '../../../components/marketing/LegalPage';
+import { COMPANY_EMAIL } from '../../../lib/company';
 
 export const metadata = {
   title: 'Terms of Service - DigitQuo Store',
@@ -34,7 +35,7 @@ export default function TermsPage() {
       </section>
       <section>
         <h2>Contact</h2>
-        <p>For terms questions, contact <a href="mailto:legal@digitquo.in">legal@digitquo.in</a>.</p>
+        <p>For terms questions, contact <a href={`mailto:${COMPANY_EMAIL}`}>{COMPANY_EMAIL}</a>.</p>
       </section>
     </LegalPage>
   );

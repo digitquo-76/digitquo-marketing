@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getCompanyMailto } from '../../lib/company';
 import { LayersIcon, SearchIcon, ShieldIcon, ChartIcon, ClockIcon, UsersIcon, HomeIcon, CheckIcon, MessageIcon, ArrowRightIcon } from '../ui/icons';
 import { HeroStat } from './HeroStat';
 
@@ -146,7 +147,7 @@ export function CtaSection() {
           <p className="cta-desc">Join thousands of sellers and brokers already thriving on DigitQuo Store. Start free - no credit card needed.</p>
           <div className="cta-actions">
             <a href="#roles" className="btn btn-primary btn-lg" id="cta-start">Get started today <ArrowRightIcon size={16} /></a>
-            <a href="mailto:sales@digitquo.in?subject=DigitQuo%20Store%20sales%20inquiry" className="btn btn-glass btn-lg" id="cta-contact">Talk to sales</a>
+            <a href={getCompanyMailto('DigitQuo Store sales inquiry')} className="btn btn-glass btn-lg" id="cta-contact">Talk to sales</a>
           </div>
         </div>
       </div>

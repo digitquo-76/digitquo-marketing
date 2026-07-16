@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { COMPANY_EMAIL, COMPANY_PHONE, getCompanyMailto } from '../../lib/company';
 import { LogoMark } from '../ui/icons';
 
 export function Footer() {
@@ -14,7 +15,13 @@ export function Footer() {
             <p className="footer-tagline">The smarter way to market and sell. Connecting sellers and brokers on one platform.</p>
           </div>
           <FooterCol title="Product" items={[['/#features', 'Features'], ['/#how-it-works', 'How It Works'], ['/register?role=seller', 'Seller signup'], ['/register?role=broker', 'Broker signup']]} />
-          <FooterCol title="Company" items={[['/#roles', 'Roles'], ['/login', 'Login'], ['/register', 'Create account'], ['mailto:sales@digitquo.in?subject=DigitQuo%20Store%20sales%20inquiry', 'Contact sales']]} />
+          <FooterCol title="Company" items={[
+            ['/#roles', 'Roles'],
+            ['/login', 'Login'],
+            ['/register', 'Create account'],
+            [getCompanyMailto('DigitQuo Store sales inquiry'), COMPANY_EMAIL],
+            [`tel:${COMPANY_PHONE}`, COMPANY_PHONE]
+          ]} />
           <FooterCol title="Legal" items={[['/privacy', 'Privacy Policy'], ['/terms', 'Terms of Service'], ['/cookies', 'Cookie Policy']]} />
         </div>
         <div className="footer-bottom">

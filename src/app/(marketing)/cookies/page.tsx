@@ -1,4 +1,5 @@
 import { LegalPage } from '../../../components/marketing/LegalPage';
+import { COMPANY_EMAIL } from '../../../lib/company';
 
 export const metadata = {
   title: 'Cookie Policy - DigitQuo Store',
@@ -26,7 +27,7 @@ export default function CookiesPage() {
       </section>
       <section>
         <h2>Contact</h2>
-        <p>For cookie questions, contact <a href="mailto:privacy@digitquo.in">privacy@digitquo.in</a>.</p>
+        <p>For cookie questions, contact <a href={`mailto:${COMPANY_EMAIL}`}>{COMPANY_EMAIL}</a>.</p>
       </section>
     </LegalPage>
   );

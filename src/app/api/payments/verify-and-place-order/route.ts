@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { COMPANY_EMAIL, COMPANY_NAME, COMPANY_PHONE } from '../../../../lib/company';
+import {
+  buildBrokerInvoiceHtml,
+  buildBrokerInvoicePdf,
+  buildBrokerInvoiceText,
+  loadInvoiceLogo,
+  LOGO_CONTENT_ID
+} from '../../../../lib/invoice';
 import { areProductSelectionsValid, normalizeProductOptionGroups, normalizeSelectedProductOptions } from '../../../../lib/productOptions';
 import type { ProductOptionGroup, SelectedProductOption } from '../../../../types';
 
@@ -346,18 +354,29 @@ async function sendBrokerInvoiceEmail(serviceClient: SupabaseClient, order: Sale
   if (!broker?.email || !isEmailConfigured()) return;
 
   const brokerName = broker.display_name || order.broker;
-  const invoicePdf = buildBrokerInvoicePdf(order, brokerName, paymentId, razorpayOrderId);
+  const logo = await loadInvoiceLogo();
+  const invoicePdf = await buildBrokerInvoicePdf(order, brokerName, paymentId, razorpayOrderId, logo);
+  const attachments: EmailAttachment[] = [
+    {
+      filename: `digitquo-invoice-${safeFilePart(order.id)}.pdf`,
+      content: invoicePdf.toString('base64')
+    }
+  ];
+
+  if (logo) {
+    attachments.push({
+      filename: 'digitquo-logo.jpeg',
+      content: logo.toString('base64'),
+      content_id: LOGO_CONTENT_ID
+    });
+  }
+
   await sendEmail({
     to: broker.email,
-    subject: `Payment invoice for ${order.product_name}`,
-    html: buildBrokerInvoiceHtml(order, brokerName, paymentId, razorpayOrderId),
+    subject: `DigitQuo invoice ${order.id} - payment received`,
+    html: buildBrokerInvoiceHtml(order, brokerName, paymentId, razorpayOrderId, Boolean(logo)),
     text: buildBrokerInvoiceText(order, brokerName, paymentId, razorpayOrderId),
-    attachments: [
-      {
-        filename: `digitquo-invoice-${safeFilePart(order.id)}.pdf`,
-        content: invoicePdf.toString('base64')
-      }
-    ]
+    attachments
   });
 }
 
@@ -383,7 +402,13 @@ function isEmailConfigured() {
   return Boolean(resendApiKey && resendFromEmail);
 }
 
-async function sendEmail(message: { to: string; subject: string; html: string; text: string; attachments?: { filename: string; content: string }[] }) {
+type EmailAttachment = {
+  filename: string;
+  content: string;
+  content_id?: string;
+};
+
+async function sendEmail(message: { to: string; subject: string; html: string; text: string; attachments?: EmailAttachment[] }) {
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -392,7 +417,8 @@ async function sendEmail(message: { to: string; subject: string; html: string; t
     },
     body: JSON.stringify({
       from: resendFromEmail,
-      ...message
+      ...message,
+      reply_to: COMPANY_EMAIL
     })
   });
 
@@ -423,6 +449,7 @@ function buildOrderEmailHtml(order: SaleRow, sellerName: string) {
       <h1 style="font-size:22px;margin:0 0 12px">New paid order placed</h1>
       <p style="margin:0 0 18px">Hi ${escapeHtml(sellerName)}, a broker completed payment and placed an order for one of your products.</p>
       ${buildRows(rows)}
+      <p style="margin:18px 0 0;color:#6d6578;font-size:13px">${COMPANY_NAME} | ${COMPANY_PHONE} | ${COMPANY_EMAIL}</p>
     </div>
   `;
 }
@@ -444,111 +471,10 @@ function buildOrderEmailText(order: SaleRow, sellerName: string) {
     `Order notes: ${order.order_notes || 'None'}`,
     `Product total: ${formatRupees(totals.productTotal)}`,
     `Shipping charge: ${formatRupees(totals.shippingCharge)}`,
-    `Total: ${formatRupees(order.total)}`
-  ].join('\n');
-}
-
-function buildBrokerInvoiceHtml(order: SaleRow, brokerName: string, paymentId: string, razorpayOrderId: string) {
-  const totals = getOrderTotals(order);
-  const rows = [
-    ['Invoice/order ID', order.id],
-    ['Payment status', 'Paid'],
-    ['Razorpay payment ID', paymentId],
-    ['Razorpay order ID', razorpayOrderId],
-    ['Product', order.product_name],
-    ['Seller', order.seller],
-    ['Customer', order.customer],
-    ['Customer phone', order.customer_phone],
-    ['Delivery address', order.customer_address],
-    ['Quantity', String(order.quantity)],
-    ...getSelectedOptionRows(order),
-    ['Unit price', formatRupees(order.unit_price)],
-    ['Product total', formatRupees(totals.productTotal)],
-    ['Shipping charge', formatRupees(totals.shippingCharge)],
-    ['Amount paid', formatRupees(order.total)],
-    ['Commission earned', formatRupees(order.points)]
-  ];
-
-  return `
-    <div style="font-family:Arial,sans-serif;color:#171321;line-height:1.5">
-      <h1 style="font-size:22px;margin:0 0 12px">Payment invoice</h1>
-      <p style="margin:0 0 18px">Hi ${escapeHtml(brokerName)}, your DigitQuo Store payment was successful.</p>
-      ${buildRows(rows)}
-    </div>
-  `;
-}
-
-function buildBrokerInvoiceText(order: SaleRow, brokerName: string, paymentId: string, razorpayOrderId: string) {
-  const totals = getOrderTotals(order);
-  return [
-    `Hi ${brokerName},`,
+    `Total: ${formatRupees(order.total)}`,
     '',
-    'Your DigitQuo Store payment was successful.',
-    '',
-    `Invoice/order ID: ${order.id}`,
-    'Payment status: Paid',
-    `Razorpay payment ID: ${paymentId}`,
-    `Razorpay order ID: ${razorpayOrderId}`,
-    `Product: ${order.product_name}`,
-    `Seller: ${order.seller}`,
-    `Customer: ${order.customer}`,
-    `Customer phone: ${order.customer_phone}`,
-    `Delivery address: ${order.customer_address}`,
-    `Quantity: ${order.quantity}`,
-    ...getSelectedOptionTextLines(order),
-    `Unit price: ${formatRupees(order.unit_price)}`,
-    `Product total: ${formatRupees(totals.productTotal)}`,
-    `Shipping charge: ${formatRupees(totals.shippingCharge)}`,
-    `Amount paid: ${formatRupees(order.total)}`,
-    `Commission earned: ${formatRupees(order.points)}`
+    `${COMPANY_NAME} | ${COMPANY_PHONE} | ${COMPANY_EMAIL}`
   ].join('\n');
-}
-
-function buildBrokerInvoicePdf(order: SaleRow, brokerName: string, paymentId: string, razorpayOrderId: string) {
-  const totals = getOrderTotals(order);
-  const rows = [
-    ['Invoice/order ID', order.id],
-    ['Payment status', 'Paid'],
-    ['Broker', brokerName],
-    ['Product', order.product_name],
-    ['Seller', order.seller],
-    ['Customer', order.customer],
-    ['Customer phone', order.customer_phone],
-    ['Delivery address', order.customer_address],
-    ['Quantity', String(order.quantity)],
-    ...getSelectedOptionRows(order),
-    ['Unit price', formatPdfMoney(order.unit_price)],
-    ['Product total', formatPdfMoney(totals.productTotal)],
-    ['Shipping charge', formatPdfMoney(totals.shippingCharge)],
-    ['Amount paid', formatPdfMoney(order.total)],
-    ['Commission earned', formatPdfMoney(order.points)],
-    ['Razorpay payment ID', paymentId],
-    ['Razorpay order ID', razorpayOrderId],
-    ['Issued on', formatDateForInvoice(order.created_at)]
-  ];
-
-  const streamLines: string[] = [];
-  const drawText = (x: number, y: number, size: number, text: string) => {
-    streamLines.push(`BT /F1 ${size} Tf ${x} ${y} Td (${escapePdfText(text)}) Tj ET`);
-  };
-
-  drawText(48, 790, 22, 'DigitQuo Store');
-  drawText(48, 762, 16, 'Payment Invoice');
-  drawText(48, 735, 10, 'This invoice confirms a paid broker order placed through DigitQuo Store.');
-
-  let y = 700;
-  rows.forEach(([label, value]) => {
-    drawText(48, y, 10, label);
-    const wrapped = wrapPdfText(value || 'Not added', 58);
-    wrapped.forEach((line, index) => {
-      drawText(190, y - (index * 14), 10, line);
-    });
-    y -= Math.max(22, wrapped.length * 14 + 8);
-  });
-
-  drawText(48, 72, 9, 'Generated by DigitQuo Store. Keep this invoice for your records.');
-
-  return createSinglePagePdf(streamLines.join('\n'));
 }
 
 function getSelectedOptionRows(order: SaleRow): string[][] {
@@ -573,78 +499,6 @@ function getOrderTotals(order: SaleRow) {
     productTotal,
     shippingCharge: Math.max(0, Number(order.total || 0) - productTotal)
   };
-}
-
-function createSinglePagePdf(contentStream: string) {
-  const stream = `${contentStream}\n`;
-  const objects = [
-    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
-    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n',
-    '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
-    `5 0 obj\n<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}endstream\nendobj\n`
-  ];
-
-  let pdf = '%PDF-1.4\n';
-  const offsets = [0];
-  objects.forEach((object) => {
-    offsets.push(Buffer.byteLength(pdf, 'ascii'));
-    pdf += object;
-  });
-
-  const xrefOffset = Buffer.byteLength(pdf, 'ascii');
-  pdf += `xref\n0 ${objects.length + 1}\n`;
-  pdf += '0000000000 65535 f \n';
-  offsets.slice(1).forEach((offset) => {
-    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
-  });
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
-
-  return Buffer.from(pdf, 'ascii');
-}
-
-function wrapPdfText(value: string, maxLength: number) {
-  const words = toPdfSafeText(value).split(/\s+/).filter(Boolean);
-  if (!words.length) return [''];
-
-  const lines: string[] = [];
-  let current = '';
-
-  words.forEach((word) => {
-    const next = current ? `${current} ${word}` : word;
-    if (next.length <= maxLength) {
-      current = next;
-      return;
-    }
-    if (current) lines.push(current);
-    current = word.length > maxLength ? word.slice(0, maxLength) : word;
-  });
-
-  if (current) lines.push(current);
-  return lines;
-}
-
-function escapePdfText(value: string) {
-  return toPdfSafeText(value)
-    .replace(/\\/g, '\\\\')
-    .replace(/\(/g, '\\(')
-    .replace(/\)/g, '\\)');
-}
-
-function toPdfSafeText(value: string) {
-  return String(value || '').replace(/[^\x20-\x7E]/g, '').trim();
-}
-
-function formatPdfMoney(value: number) {
-  return `INR ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Number(value || 0))}`;
-}
-
-function formatDateForInvoice(value: string) {
-  return new Intl.DateTimeFormat('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  }).format(new Date(value));
 }
 
 function buildRows(rows: string[][]) {
