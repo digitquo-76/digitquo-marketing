@@ -242,8 +242,8 @@ security definer
 set search_path = public
 as $$
   select case
-    when role = 'seller' then coalesce(nullif(btrim(business_name), ''), nullif(btrim(display_name), ''), btrim(email))
-    else coalesce(nullif(btrim(display_name), ''), btrim(email))
+    when role = 'seller' then coalesce(nullif(business_name, ''), nullif(display_name, ''), email)
+    else coalesce(nullif(display_name, ''), email)
   end
   from public.profiles
   where id = auth.uid()
