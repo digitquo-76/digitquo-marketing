@@ -31,11 +31,18 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 3px solid transparent;
-  border-top-color: #6d28d9;
-  border-right-color: rgba(109, 40, 217, 0.5);
-  border-bottom-color: rgba(109, 40, 217, 0.15);
-  animation: loading-spin 0.85s cubic-bezier(0.4, 0.15, 0.6, 0.85) infinite;
+  background: conic-gradient(from 0deg, transparent 0%, #6d28d9 100%);
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #fff calc(100% - 3px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #fff calc(100% - 3px)
+  );
+  animation: loading-spin 0.85s linear infinite;
 }
 
 @keyframes loading-spin {
@@ -62,6 +69,5 @@
   .loading-spinner {
     width: 48px;
     height: 48px;
-    border-width: 3px;
   }
 }
