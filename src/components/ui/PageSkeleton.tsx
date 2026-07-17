@@ -28,7 +28,7 @@ export function PageSkeleton({ variant }: PageSkeletonProps) {
       {/* Spinner ring */}
       <div className="loading-ring-wrap" aria-hidden="true">
         <span className="loading-ring-track" />
-        <span className="loading-ring-spin" />
+        <span className="loading-ring-spin" style={{ animation: 'ls-spin-v2 1.5s linear infinite' }} />
       </div>
 
       {/* Dot pulse */}
