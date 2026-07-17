@@ -1,5 +1,4 @@
 import '../../styles/dashboard.css';
-import '../../styles/skeleton.css';
 
 export const metadata = {
   title: 'DigitQuo Store - Dashboard',
